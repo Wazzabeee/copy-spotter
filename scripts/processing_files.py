@@ -95,9 +95,9 @@ def get_words_from_txt_file(txt_path: str) -> list:
 def get_words_from_docx_file(docx_path: str) -> list:
     """ Return list of words from docx file at specified path """
 
-    docx = zipfile.ZipFile(docx_path)
-    content = docx.read('word/document.xml').decode('utf-8')
-    cleaned = re.sub('<(.|\n)*?>', '', content)
+    with zipfile.ZipFile(docx_path) as docx:
+        content = docx.read('word/document.xml').decode('utf-8')
+        cleaned = re.sub('<(.|\n)*?>', '', content)
 
     return re.findall(r'\w+', cleaned.lower())
 

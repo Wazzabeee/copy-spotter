@@ -27,7 +27,7 @@ def add_links_to_html_table(html_path: str) -> None:
 
     """
 
-    with open(html_path, 'r+') as html:
+    with open(html_path, encoding='utf-8') as html:
         soup = Bs(html, 'html.parser')
         file_ind = 0  # Cursor on file number for the naming of html files
 
@@ -120,7 +120,7 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list) -> None
     comp_path = path.join(save_dir, str(ind) + '.html')
     rename(path.join(save_dir, 'template.html'), comp_path)
 
-    with open(comp_path, 'r+') as html:
+    with open(comp_path, encoding='utf-8') as html:
         soup = Bs(html, 'html.parser')
 
         res = get_span_blocks(soup, text1, text2)
@@ -144,7 +144,7 @@ def results_to_html(scores: list, files_names: list, html_path: str) -> None:
     scores.insert(0, files_names)
     scores[0].insert(0, '')
 
-    with open(html_path, 'w') as file:
+    with open(html_path, 'w', encoding='utf-8') as file:
         file.write(tabulate(scores, tablefmt='html'))
         file.flush()
         fsync(file.fileno())
