@@ -1,3 +1,4 @@
+""" This module is used to process text in docx, odt, txt and pdf files """
 import re
 import zipfile
 from os import path
@@ -26,24 +27,22 @@ def file_extension_call(file: str) -> list:
     if extension:
         if extension == '.pdf':
             return get_words_from_pdf_file(file)
-        elif extension == '.docx':
+        if extension == '.docx':
             return get_words_from_docx_file(file)
-        elif extension == '.odt':
+        if extension == '.odt':
             return get_words_from_odt_file(file)
-        elif extension == '.txt':
+        if extension == '.txt':
             return get_words_from_txt_file(file)
-        else:
-            print("File format is not supported. Please convert to pdf, docx, odt or txt")
-            return []
 
+    print("File format is not supported. Please convert to pdf, docx, odt or txt")
     return []
 
 
 def get_words_from_pdf_file(pdf_path: str) -> list:
     """ Return list of words from pdf file at specified path """
 
-    with open(pdf_path, 'rb') as f:
-        extracted_text = slate.PDF(f)
+    with open(pdf_path, 'rb') as file:
+        extracted_text = slate.PDF(file)
 
     nested_lists_length_sum = sum([len(temp) for temp in extracted_text])
     count_line_return = sum([string.count('\n') for string in extracted_text])
@@ -51,15 +50,15 @@ def get_words_from_pdf_file(pdf_path: str) -> list:
     # Check \n ratio compared to length of text
     if nested_lists_length_sum / count_line_return > 10:
 
-        for i in range(len(extracted_text)):
+        for i, _ in enumerate(extracted_text):
             extracted_text[i] = extracted_text[i].replace('\n', ' ')
             extracted_text[i] = re.sub('<(.|\n)*?>', '', str(extracted_text[i]))
             extracted_text[i] = re.findall(r'\w+', extracted_text[i].lower())
 
         return [item for sublist in extracted_text for item in sublist]
 
-    else:  # Pdf format is not readable by Slate library
-        get_words_from_special_pdf(pdf_path)
+    # Pdf format is not readable by Slate library
+    get_words_from_special_pdf(pdf_path)
 
 
 def get_words_from_special_pdf(pdf_path: str) -> str:
@@ -71,7 +70,7 @@ def get_words_from_special_pdf(pdf_path: str) -> str:
             text_page = page.extract_text()+'\n'
             concat_string += text_page
 
-    return " ".join(concat_string.replace(u"\xa0", " ").strip().split())
+    return " ".join(concat_string.replace("\xa0", " ").strip().split())
 
 
 def get_words_from_txt_file(txt_path: str) -> list:
@@ -79,9 +78,9 @@ def get_words_from_txt_file(txt_path: str) -> list:
 
     words = []
 
-    with open(txt_path, encoding='utf-8') as f:
+    with open(txt_path, encoding='utf-8') as file:
 
-        for line in f:
+        for line in file:
             try:
                 for word in line.split():
                     words.append(word.lower())

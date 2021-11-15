@@ -1,14 +1,21 @@
+""" This script stores useful functions for html.py file
+
+It finds occurences of matching blocks in text.
+It gets ordered positions of matching blocks in text.
+It returns colors depending on the similarity score.
+
+"""
 import difflib
 from operator import itemgetter
 from os import getcwd, path, makedirs
 
 
-def get_real_matching_blocks(words_list1: list, words_list2: list, n: int) -> list:
+def get_real_matching_blocks(words_list1: list, words_list2: list, size_limit: int) -> list:
     """ Return list of matching blocks with size greater than n """
 
     matching_blocks = difflib.SequenceMatcher(a=words_list1, b=words_list2).get_matching_blocks()
 
-    return [b for b in matching_blocks if b.size > n]
+    return [b for b in matching_blocks if b.size > size_limit]
 
 
 def get_ordered_blocks_positions(string: str, matching_blocks: list, string_blocks: list) -> list:
@@ -16,11 +23,11 @@ def get_ordered_blocks_positions(string: str, matching_blocks: list, string_bloc
 
     all_blocks_positions = []
 
-    for block_ind, block in enumerate(matching_blocks):
+    for block_ind, _ in enumerate(matching_blocks):
         # Find all positions of substring in string
-        block_positions = [char for char in range(len(string)) if string.startswith(string_blocks[
-                                                                                        block_ind],
-                                                                                    char)]
+        block_positions = [char for char in range(len(string)) if string.startswith(
+            string_blocks[block_ind], char)]
+
         for position in block_positions:
             all_blocks_positions.append((position, block_ind))
 
@@ -55,9 +62,9 @@ def get_color_from_similarity(similarity_score: float) -> str:
 
     if float(similarity_score) > 15:
         return "#990033; font-weight: bold"
-    elif float(similarity_score) > 10:
+    if float(similarity_score) > 10:
         return "#ff6600"
-    elif float(similarity_score) > 5:
+    if float(similarity_score) > 5:
         return "#ffcc00"
-    else:
-        return "green"
+
+    return "green"

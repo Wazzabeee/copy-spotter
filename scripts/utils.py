@@ -1,3 +1,11 @@
+""" This script stores functions for text processing, type validation, printing results
+
+It verifies if value is float different from - 1
+It prints similarity results in a pretty table in console
+It waits for file creation
+It can lemmatize, remove stop words, remove numbers for text processing
+
+"""
 from os import path
 from time import sleep
 
@@ -9,8 +17,8 @@ def is_float(value: float) -> bool:
     """ Return true if value is a float and not equal to -1 """
 
     try:
-        tmp = float(value)
-        return True if tmp != -1 else False
+        temp = float(value)
+        return temp != 1
     except ValueError:
         return False
 

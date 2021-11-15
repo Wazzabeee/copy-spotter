@@ -1,9 +1,15 @@
+""" This function calculates similarity scores with different methods
+
+It calculates similarity scores with :
+- difflib library to find matching sequences.
+- Jaccard Similarity
+- words counting,
+- overlapping words
+
+"""
 import difflib
 
 from utils import remove_numbers, remove_stop_words, lemmatize
-
-
-# TODO Implement Cosine Similarity
 
 
 def difflib_overlap(word_token1: list, word_token2: list) -> float:
@@ -20,9 +26,9 @@ def calculate_overlap(word_token1: list, word_token2: list) -> float:
 
     overlapping_words = []
 
-    for w in word_token1:
-        if w in word_token2:
-            overlapping_words.append(w)
+    for word in word_token1:
+        if word in word_token2:
+            overlapping_words.append(word)
 
     overlap_percentage = len(overlapping_words) / len(word_token1) * 100
 
@@ -42,9 +48,9 @@ def calculate_jaccard(word_tokens1: list, word_tokens2: list) -> float:
 
     # Calculate intersection
     intersection = set()
-    for w in list1:
-        if w in list2:
-            intersection.add(w)
+    for word in list1:
+        if word in list2:
+            intersection.add(word)
 
     jaccard_score = len(intersection) / len(union)
 

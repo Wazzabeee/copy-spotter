@@ -1,3 +1,11 @@
+""" This script is used for writing in HTML files
+
+It adds links to HTML table.
+It generates span tags for un/colored matching blocks.
+It compares two text files
+It inserts comparison results in corresponding html files
+
+"""
 from os import fsync, rename, path
 from random import randint
 from shutil import copy
@@ -19,27 +27,28 @@ def add_links_to_html_table(html_path: str) -> None:
 
     """
 
-    html = open(html_path)
-    soup = Bs(html, 'html.parser')
-    file_ind = 0  # Cursor on file number for the naming of html files
+    with open(html_path, 'r+') as html:
+        soup = Bs(html, 'html.parser')
+        file_ind = 0  # Cursor on file number for the naming of html files
 
-    for td in soup.findAll('td'):  # Retrieve all data celss from html table in path
+        for td_tag in soup.findAll('td'):  # Retrieve all data celss from html table in path
 
-        if is_float(td.text):  # If td is not filename or -1
+            if is_float(td_tag.text):  # If td is not filename or -1
 
-            tmp = soup.new_tag('a',
-                               href='file:///' + html_path.replace('_results', str(file_ind)),
-                               target="_blank", style="color:" + get_color_from_similarity(td.text))
+                tmp = soup.new_tag('a',
+                                   href='file:///' + html_path.replace('_results', str(file_ind)),
+                                   target="_blank",
+                                   style="color:" + get_color_from_similarity(td_tag.text))
 
-            td.string.wrap(tmp)  # We wrap the td string between the hyperlink
-            file_ind += 1
+                td_tag.string.wrap(tmp)  # We wrap the td string between the hyperlink
+                file_ind += 1
 
-    # We update the HTML of the file at path
-    with open(html_path, 'wb') as f_output:
-        f_output.write(soup.prettify("utf-8"))
-        f_output.flush()
-        fsync(f_output.fileno())
-        f_output.close()
+        # We update the HTML of the file at path
+        with open(html_path, 'wb') as f_output:
+            f_output.write(soup.prettify("utf-8"))
+            f_output.flush()
+            fsync(f_output.fileno())
+            f_output.close()
 
     html.flush()
     html.close()
@@ -102,22 +111,25 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list) -> list:
 
 
 def papers_comparison(save_dir: str, ind: int, text1: list, text2: list) -> None:
-    """ """
+    """ Write to HTML file texts that have compared
+
+
+    """
 
     copy(r'..\templates\template.html', save_dir)  # Copy comparison template to curr dir
     comp_path = path.join(save_dir, str(ind) + '.html')
     rename(path.join(save_dir, 'template.html'), comp_path)
 
-    html = open(comp_path)
-    soup = Bs(html, 'html.parser')
+    with open(comp_path, 'r+') as html:
+        soup = Bs(html, 'html.parser')
 
-    res = get_span_blocks(soup, text1, text2)
+        res = get_span_blocks(soup, text1, text2)
 
-    blocks = soup.findAll(attrs={'class': 'block'})
-    for tag in res[0]:
-        blocks[0].append(tag)
-    for tag in res[1]:
-        blocks[1].append(tag)
+        blocks = soup.findAll(attrs={'class': 'block'})
+        for tag in res[0]:
+            blocks[0].append(tag)
+        for tag in res[1]:
+            blocks[1].append(tag)
 
     with open(comp_path, 'wb') as f_output:
         f_output.write(soup.prettify("utf-8"))
@@ -126,14 +138,14 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list) -> None
 def results_to_html(scores: list, files_names: list, html_path: str) -> None:
     """  Write similarity results to HTML page """
 
-    for ind in range(len(files_names)):
+    for ind, _ in enumerate(files_names):
         scores[ind].insert(0, files_names[ind])
 
     scores.insert(0, files_names)
     scores[0].insert(0, '')
 
-    with open(html_path, 'w') as f:
-        f.write(tabulate(scores, tablefmt='html'))
-        f.flush()
-        fsync(f.fileno())
-        f.close()
+    with open(html_path, 'w') as file:
+        file.write(tabulate(scores, tablefmt='html'))
+        file.flush()
+        fsync(file.fileno())
+        file.close()

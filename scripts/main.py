@@ -1,11 +1,20 @@
+#!/usr/bin/env python
+""" This module launches the files comparison process
+
+This modules compares all txt, docs, odt, pdf files present in path specified as argument.
+It writes results in a HTML table.
+It uses difflib library to find matching sequences.
+It can also use Jaccard Similarity, words counting, overlapping words for similarity
+
+"""
 import sys
 import webbrowser
 from datetime import datetime
-from os import listdir
+from os import listdir, path
 
 from html import add_links_to_html_table, results_to_html, papers_comparison
 from html_utils import writing_results
-from processing_files import *
+from processing_files import file_extension_call
 from similarity import difflib_overlap
 from utils import wait_for_file
 
@@ -34,7 +43,7 @@ if __name__ == '__main__':
                         else:  # At least one file was not supported
                             print("Remove files which are not txt, pdf, docx or odt and run the "
                                   "script again.")
-                            exit()
+                            sys.exit()
 
                 # Create new directory for storing html files
                 results_directory = writing_results(datetime.now().strftime("%Y%m%d_%H%M%S"))
@@ -68,12 +77,12 @@ if __name__ == '__main__':
                 print(
                     "Minimum number of files is not present. Please check that there are at least "
                     "two files to compare.")
-                exit()
+                sys.exit()
         else:
             print("The specified path does not exist : " + papers)
-            exit()
+            sys.exit()
 
     else:
         print("Missing mandatory parameters")
         print("python main.py full_path_to_papers_directory")
-        exit()
+        sys.exit()
