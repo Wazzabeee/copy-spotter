@@ -18,7 +18,7 @@ def is_float(value: float) -> bool:
 
     try:
         temp = float(value)
-        return temp != 1
+        return temp != -1
     except ValueError:
         return False
 

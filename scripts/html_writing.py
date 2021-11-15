@@ -50,9 +50,6 @@ def add_links_to_html_table(html_path: str) -> None:
             fsync(f_output.fileno())
             f_output.close()
 
-    html.flush()
-    html.close()
-
 
 def get_span_blocks(bs_obj: Bs, text1: list, text2: list) -> list:
     """ Return list of spans with colors for HTML rendering """

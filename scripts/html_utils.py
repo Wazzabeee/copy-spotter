@@ -1,4 +1,4 @@
-""" This script stores useful functions for html.py file
+""" This script stores useful functions for html_writing.py file
 
 It finds occurences of matching blocks in text.
 It gets ordered positions of matching blocks in text.

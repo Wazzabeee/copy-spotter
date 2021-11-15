@@ -12,7 +12,7 @@ import webbrowser
 from datetime import datetime
 from os import listdir, path
 
-from html import add_links_to_html_table, results_to_html, papers_comparison
+from html_writing import add_links_to_html_table, results_to_html, papers_comparison
 from html_utils import writing_results
 from processing_files import file_extension_call
 from similarity import difflib_overlap
