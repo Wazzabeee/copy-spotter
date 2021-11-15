@@ -60,7 +60,7 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list) -> list:
     matching_blocks = get_real_matching_blocks(text1, text2, 2)
 
     # Generate one unique color for each matching block
-    colors = ['#%06X' % randint(0, 0xFFFFFF) for _ in range(len(matching_blocks))]
+    colors = [f'#%06X' % randint(0, 0xFFFFFF) for _ in range(len(matching_blocks))]
 
     # Convert blocks from list of list of strings to list of strings
     string_blocks = [' '.join(map(str, text1[b.a:b.a + b.size])) for b in matching_blocks]
