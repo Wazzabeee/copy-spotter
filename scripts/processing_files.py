@@ -1,23 +1,25 @@
 import re
 import zipfile
+from os import path
+
+import pdfplumber
 import slate3k as slate
 from odf import text, teletype
 from odf.opendocument import load
-from os import path
 
 
-def get_file_extension(filepath):
-    """ Return the file extension of file at filepath """
+def get_file_extension(filepath: str) -> str:
+    """ Return the file extension of the file at the specified path """
 
     try:
         return path.splitext(filepath)[1]
-    except:
+    except (Exception,):
         print("File extension error")
-        return None
+        return ''
 
 
-def file_extension_call(file):
-    """ Map file extension to correct function call """
+def file_extension_call(file: str) -> list:
+    """ Map file extension to appropriate function """
 
     extension = get_file_extension(file)
 
@@ -32,23 +34,48 @@ def file_extension_call(file):
             return get_words_from_txt_file(file)
         else:
             print("File format is not supported. Please convert to pdf, docx, odt or txt")
-            return None
+            return []
 
-    return None
+    return []
 
 
-def get_words_from_pdf_file(pdf_path):
-    """ Return list of words from pdf file """
+def get_words_from_pdf_file(pdf_path: str) -> list:
+    """ Return list of words from pdf file at specified path """
 
     with open(pdf_path, 'rb') as f:
         extracted_text = slate.PDF(f)
 
-    cleaned2 = re.sub('<(.|\n)*?>', '', str(extracted_text))
-    return re.findall(r'\w+', cleaned2.lower())
+    nested_lists_length_sum = sum([len(temp) for temp in extracted_text])
+    count_line_return = sum([string.count('\n') for string in extracted_text])
+
+    # Check \n ratio compared to length of text
+    if nested_lists_length_sum / count_line_return > 10:
+
+        for i in range(len(extracted_text)):
+            extracted_text[i] = extracted_text[i].replace('\n', ' ')
+            extracted_text[i] = re.sub('<(.|\n)*?>', '', str(extracted_text[i]))
+            extracted_text[i] = re.findall(r'\w+', extracted_text[i].lower())
+
+        return [item for sublist in extracted_text for item in sublist]
+
+    else:  # Pdf format is not readable by Slate library
+        get_words_from_special_pdf(pdf_path)
 
 
-def get_words_from_txt_file(txt_path):
-    """ Return list of words from txt file """
+def get_words_from_special_pdf(pdf_path: str) -> str:
+    """ Return list of words from pdf file when Slate library can't scrape it """
+
+    with pdfplumber.open(pdf_path) as file:
+        concat_string = ''
+        for page in file.pages:
+            text_page = page.extract_text()+'\n'
+            concat_string += text_page
+
+    return " ".join(concat_string.replace(u"\xa0", " ").strip().split())
+
+
+def get_words_from_txt_file(txt_path: str) -> list:
+    """ Return list of words from txt file at specified path """
 
     words = []
 
@@ -66,26 +93,26 @@ def get_words_from_txt_file(txt_path):
     return re.findall(r'\w+', str_words)
 
 
-def get_words_from_docx_file(docx_path):
-    """ Return list of words from docx file """
+def get_words_from_docx_file(docx_path: str) -> list:
+    """ Return list of words from docx file at specified path """
 
     docx = zipfile.ZipFile(docx_path)
     content = docx.read('word/document.xml').decode('utf-8')
-    cleaned2 = re.sub('<(.|\n)*?>', '', content)
+    cleaned = re.sub('<(.|\n)*?>', '', content)
 
-    return re.findall(r'\w+', cleaned2.lower())
+    return re.findall(r'\w+', cleaned.lower())
 
 
-def get_words_from_odt_file(odt_path):
-    """ Return list of words from odt file """
+def get_words_from_odt_file(odt_path: str) -> list:
+    """ Return list of words from odt file at specified path """
 
     textdoc = load(odt_path)
-    allparas = textdoc.getElementsByType(text.P)
+    paragraphs = textdoc.getElementsByType(text.P)
 
     full_text = str()
 
-    for para in allparas:
-        temp = teletype.extractText(para)
+    for paragraph in paragraphs:
+        temp = teletype.extractText(paragraph)
         full_text += temp.lower()
 
     return re.findall(r'\w+', full_text)

@@ -1,10 +1,11 @@
+from os import path
+from time import sleep
+
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from time import sleep
-from os import path
 
 
-def is_float(value):
+def is_float(value: float) -> bool:
     """ Return true if value is a float and not equal to -1 """
 
     try:
@@ -14,8 +15,17 @@ def is_float(value):
         return False
 
 
-def wait_for_file(file_path, timeout=10):
-    """Wait for the creation of a specific file.
+def pretty_table(scores: list, names: list) -> None:
+    """ Print similarity results nicely """
+
+    row_format = "{:>15}" * (len(names) + 1)
+    print(row_format.format("", *names))
+    for name, row in zip(names, scores):
+        print(row_format.format(name, *row))
+
+
+def wait_for_file(file_path: str, timeout: int = 10) -> bool:
+    """ Wait for the creation of a specific file.
 
     This method checks if the specified file exists and waits for it to
     appear during the specified amount of time (by default 10 seconds).
