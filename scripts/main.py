@@ -58,7 +58,8 @@ if __name__ == '__main__':
                             difflib_scores[i].append(difflib_overlap(text, text_bis))
 
                             # Write text with matching blocks colored in results directory
-                            papers_comparison(results_directory, file_ind, text, text_bis)
+                            papers_comparison(results_directory, file_ind, text, text_bis,
+                                              (filenames[i], filenames[j]))
                             file_ind += 1
                         else:
                             difflib_scores[i].append(-1)

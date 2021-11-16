@@ -56,8 +56,8 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list) -> list:
 
     results = [[], []]  # List of spans list
 
-    # Get matching blocks with size greater than 2
-    matching_blocks = get_real_matching_blocks(text1, text2, 2)
+    # Get matching blocks with chosen minimum size
+    matching_blocks = get_real_matching_blocks(text1, text2, minimum_size=2)
 
     # Generate one unique color for each matching block
     colors = [f'#%06X' % randint(0, 0xFFFFFF) for _ in range(len(matching_blocks))]
@@ -107,7 +107,7 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list) -> list:
     return results
 
 
-def papers_comparison(save_dir: str, ind: int, text1: list, text2: list) -> None:
+def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple) -> None:
     """ Write to HTML file texts that have compared
 
 
@@ -121,12 +121,15 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list) -> None
         soup = Bs(html, 'html.parser')
 
         res = get_span_blocks(soup, text1, text2)
-
         blocks = soup.findAll(attrs={'class': 'block'})
-        for tag in res[0]:
-            blocks[0].append(tag)
-        for tag in res[1]:
-            blocks[1].append(tag)
+
+        # Append filename tags and span tags to html
+        for i, filename in enumerate(filenames):
+            temp_tag = soup.new_tag('h3')
+            temp_tag.string = filename
+            blocks[i].append(temp_tag)
+            for tag in res[i]:
+                blocks[i].append(tag)
 
     with open(comp_path, 'wb') as f_output:
         f_output.write(soup.prettify("utf-8"))
