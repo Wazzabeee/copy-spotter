@@ -16,7 +16,8 @@ from html_writing import add_links_to_html_table, results_to_html, papers_compar
 from html_utils import writing_results
 from processing_files import file_extension_call
 from similarity import difflib_overlap
-from utils import wait_for_file
+from utils import wait_for_file, get_student_names
+
 
 if __name__ == '__main__':
 
@@ -29,21 +30,22 @@ if __name__ == '__main__':
         if path.exists(papers):  # Check if specified path exists
 
             if len(listdir(papers)) > 1:  # Check if there are at least 2 files at specified path
-
                 filenames, processed_files = [], []
-                for filename in listdir(papers):  # We loop trough files in directory
+                students_names = get_student_names(papers)
+                for ind, direc in enumerate(listdir(papers)):
+                    if path.isdir(path.join(papers, direc)):
 
-                    if path.isfile(papers + '\\' + filename):
-                        # We parse the file with the appropriate function
-                        file_words = file_extension_call(papers + '\\' + filename)
+                        for file in listdir(path.join(papers, direc)):
+                            file_words = file_extension_call(papers + '\\' + direc + '\\' + file)
 
-                        if file_words:  # If all files have supported format
-                            processed_files.append(file_words)
-                            filenames.append(filename)
-                        else:  # At least one file was not supported
-                            print("Remove files which are not txt, pdf, docx or odt and run the "
-                                  "script again.")
-                            sys.exit()
+                            if file_words:  # If all files have supported format
+                                processed_files.append(file_words)
+                                filenames.append(students_names[ind])
+                            else:  # At least one file was not supported
+                                print(
+                                    "Remove files which are not txt, pdf, docx or odt and run the "
+                                    "script again.")
+                                sys.exit()
 
                 # Create new directory for storing html files
                 results_directory = writing_results(datetime.now().strftime("%Y%m%d_%H%M%S"))

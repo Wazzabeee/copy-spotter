@@ -6,7 +6,7 @@ It waits for file creation
 It can lemmatize, remove stop words, remove numbers for text processing
 
 """
-from os import path
+from os import path, listdir
 from time import sleep
 
 from nltk.corpus import stopwords
@@ -21,6 +21,13 @@ def is_float(value: float) -> bool:
         return temp != -1
     except ValueError:
         return False
+
+
+def get_student_names(main_path):
+    sub_directories = [name for name in listdir(main_path)
+                       if path.isdir(path.join(main_path, name))]
+
+    return [title.split('_')[0] for title in sub_directories]
 
 
 def pretty_table(scores: list, names: list) -> None:
