@@ -10,12 +10,14 @@ from operator import itemgetter
 from os import getcwd, path, makedirs
 
 
-def get_real_matching_blocks(words_list1: list, words_list2: list, minimum_size: int) -> list:
+def get_real_matching_blocks(words_list1: list, words_list2: list, minimum_size: int = 2) -> list:
     """ Return list of matching blocks with size greater than n """
 
     matching_blocks = difflib.SequenceMatcher(a=words_list1, b=words_list2).get_matching_blocks()
-
-    return [b for b in matching_blocks if b.size >= minimum_size]
+    if minimum_size and minimum_size > 0:
+        return [b for b in matching_blocks if b.size >= minimum_size]
+    else:
+        return [b for b in matching_blocks if b.size >= 2]
 
 
 def get_ordered_blocks_positions(string: str, matching_blocks: list, string_blocks: list) -> list:

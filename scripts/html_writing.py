@@ -6,6 +6,7 @@ It compares two text files
 It inserts comparison results in corresponding html files
 
 """
+import sys
 from os import fsync, rename, path
 from random import randint
 from shutil import copy
@@ -51,13 +52,13 @@ def add_links_to_html_table(html_path: str) -> None:
             f_output.close()
 
 
-def get_span_blocks(bs_obj: Bs, text1: list, text2: list) -> list:
+def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> list:
     """ Return list of spans with colors for HTML rendering """
 
     results = [[], []]  # List of spans list
 
     # Get matching blocks with chosen minimum size
-    matching_blocks = get_real_matching_blocks(text1, text2, minimum_size=2)
+    matching_blocks = get_real_matching_blocks(text1, text2, block_size)
 
     # Generate one unique color for each matching block
     colors = [f'#%06X' % randint(0, 0xFFFFFF) for _ in range(len(matching_blocks))]
@@ -107,7 +108,8 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list) -> list:
     return results
 
 
-def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple) -> None:
+def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple,
+                      block_size: int) -> None:
     """ Write to HTML file texts that have compared
 
 
@@ -120,7 +122,7 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenam
     with open(comp_path, encoding='utf-8') as html:
 
         soup = Bs(html, 'html.parser')
-        res = get_span_blocks(soup, text1, text2)
+        res = get_span_blocks(soup, text1, text2, block_size)
         blocks = soup.findAll(attrs={'class': 'block'})
 
         # Append filename tags and span tags to html

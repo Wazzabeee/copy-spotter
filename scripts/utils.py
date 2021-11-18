@@ -6,11 +6,22 @@ It waits for file creation
 It can lemmatize, remove stop words, remove numbers for text processing
 
 """
+import argparse
 from os import path, listdir
 from time import sleep
 
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
+
+
+def parse_options():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("in_dir", type=str, help="input directory for text files")
+    parser.add_argument("-o", "--out_dir", type=str, help="output directory for html results files")
+    parser.add_argument("-s", "--block_size", type=int, help="minimum number of consecutive and "
+                                                             "similar words detected (default=2)")
+
+    return parser.parse_args()
 
 
 def is_float(value: float) -> bool:
