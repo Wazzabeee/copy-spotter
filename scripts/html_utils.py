@@ -29,7 +29,18 @@ def get_ordered_blocks_positions(string: str, matching_blocks: list, string_bloc
             string_blocks[block_ind], char)]
 
         for position in block_positions:
-            all_blocks_positions.append((position, block_ind))
+            # We check if there is another block starting at the same position
+            var = [pos_tuple for pos_tuple in all_blocks_positions if pos_tuple[0] == position]
+            if var:  # If there is one such block
+                size = len(string_blocks[var[0][1]])  # get size of block in var
+                if size < len(string_blocks[block_ind]):
+                    # Remove old position block which is smaller than curr block
+                    all_blocks_positions.pop(all_blocks_positions.index(var[0]))
+
+                    # Add new block to list
+                    all_blocks_positions.append((position, block_ind))
+            else:
+                all_blocks_positions.append((position, block_ind))
 
     return sorted(all_blocks_positions, key=itemgetter(0))
 

@@ -118,8 +118,8 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenam
     rename(path.join(save_dir, 'template.html'), comp_path)
 
     with open(comp_path, encoding='utf-8') as html:
-        soup = Bs(html, 'html.parser')
 
+        soup = Bs(html, 'html.parser')
         res = get_span_blocks(soup, text1, text2)
         blocks = soup.findAll(attrs={'class': 'block'})
 
