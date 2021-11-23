@@ -20,7 +20,6 @@ from utils import wait_for_file, get_student_names, parse_options
 
 
 def main() -> None:
-
     args = parse_options()
     in_dir, out_dir, block_size = args.in_dir, args.out_dir, args.block_size
 
@@ -43,8 +42,7 @@ def main() -> None:
                                 "Remove files which are not txt, pdf, docx or odt and run the "
                                 "script again.")
                             sys.exit()
-
-            if path.exists(out_dir):
+            if out_dir is not None and path.exists(out_dir):
                 results_directory = out_dir
             else:
                 # Create new directory for storing html files
