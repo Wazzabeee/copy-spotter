@@ -1,4 +1,4 @@
-# plagiarism_checker
+# Plagiarism checker
 
 ![GIF demo](img/example.gif)
 
@@ -39,3 +39,17 @@ $ pip3 install requirements.txt
 # Run the app
 $ python main.py C:/Users/Desktop/papers -s 2 -o C:/Users/Desktop/results
 ```
+**First run**
+---
+On the first run you might get a TypeError from Slate3k library. 
+```
+TypeError __init__() missing 1 required positional arg 'parser' in "C:/.../slate3k/classes.py
+```
+To fix this you'll need to modify `class PDF(list):` in `classes.py`. In `def __init__()` change both `if PYTHON 3:` to `if not PYTHON 3:`
+
+**Recommandations**
+---
+- Please make sure that all text files are closed before running the program.
+- In order to get the best results please provide text files of the same languages.
+- Pdf files that are made from scanned images won't be processed correctly.
+- If a specific file is not processed correctly feel free to [contact me](mailto:<clement.delteil@utbm.fr>) so that I can address the issue.
