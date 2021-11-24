@@ -6,7 +6,6 @@ It compares two text files
 It inserts comparison results in corresponding html files
 
 """
-import sys
 from os import fsync, rename, path
 from random import randint
 from shutil import copy
@@ -24,7 +23,7 @@ def add_links_to_html_table(html_path: str) -> None:
 
     This method will link to all HTML TD tags which contain a float different from - 1 the
     corresponding HTML comparison file. The links will be opened in a new tab. The colors of
-    the text in tag wil change depending on similarity score.
+    the text in tag will change depending on similarity score.
 
     """
 
@@ -110,10 +109,7 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> li
 
 def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple,
                       block_size: int) -> None:
-    """ Write to HTML file texts that have compared
-
-
-    """
+    """ Write to HTML file texts that have been compared with highlighted similar blocks """
 
     copy(r'..\templates\template.html', save_dir)  # Copy comparison template to curr dir
     comp_path = path.join(save_dir, str(ind) + '.html')
