@@ -18,8 +18,8 @@ Usage: main.py input_directory [OPTIONS]
 
 
 Options:
-  -block_size, -s  Set minimum number of consecutive and similar words detected
-  -out_dir, -o     Set the output directory for html files.
+  -block_size, -s  Set minimum number of consecutive and similar words detected. (Default is 2)
+  -out_dir, -o     Set the output directory for html files. (Default is creating a new directory)
   -help, -h        Show this message and exit.
 ```
 
