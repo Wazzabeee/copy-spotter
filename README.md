@@ -45,7 +45,7 @@ On the first run you might get a TypeError from Slate3k library.
 ```
 TypeError __init__() missing 1 required positional arg 'parser' in "C:/.../slate3k/classes.py
 ```
-To fix this you'll need to modify `class PDF(list):` in `classes.py`. In `def __init__()` change both `if PYTHON 3:` to `if not PYTHON 3:`
+To fix this you'll need to modify `class PDF(list):` in `/slate3k/classes.py`. In `def __init__()` change both `if PYTHON 3:` to `if not PYTHON 3:`
 
 **Recommandations**
 ---
