@@ -48,10 +48,10 @@ ImportError: cannot import name 'uint_value' from 'pdfminer.pdftypes' (C:/.../pd
 ```
 To fix this, please uninstall pdfminer3k and pdfminer.six via 
 ``` pip uninstall pdfminer3k ```
-``` pip uninstall pdfminer.six ```.
+``` pip uninstall pdfminer.six ```
 Then install them again via 
 ``` pip install pdfminer3k ```
-``` pip install pdfminer.six ```.
+``` pip install pdfminer.six ```
 
 
 - a TypeError from Slate3k library 
