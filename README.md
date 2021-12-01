@@ -41,11 +41,24 @@ $ python main.py C:/Users/Desktop/papers -s 2 -o C:/Users/Desktop/results
 ```
 **First run**
 ---
-On the first run you might get a TypeError from Slate3k library. 
+On the first run you might get :
+- an ImportError from pdfminer library 
+``` 
+ImportError: cannot import name 'uint_value' from 'pdfminer.pdftypes' (C:/.../pdfminer/pdftypes.py)
+```
+To fix this, please uninstall pdfminer3k and pdfminer.six via 
+``` pip uninstall pdfminer3k ```
+``` pip uninstall pdfminer.six ```.
+Then install them again via 
+``` pip install pdfminer3k ```
+``` pip install pdfminer.six ```.
+
+
+- a TypeError from Slate3k library 
 ```
 TypeError __init__() missing 1 required positional arg 'parser' in "C:/.../slate3k/classes.py
 ```
-To fix this you'll need to modify `class PDF(list):` in `classes.py`. In `def __init__()` change both `if PYTHON 3:` to `if not PYTHON 3:`
+To fix this you'll need to modify `class PDF(list):` in `C:/.../slate3k/classes.py`. In `def __init__()` change both `if PYTHON 3:` <br/> to `if not PYTHON 3:` on lines 58 and 72.
 
 **Recommandations**
 ---
