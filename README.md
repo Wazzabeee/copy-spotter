@@ -34,7 +34,7 @@ $ git clone https://github.com/Wazzabeee/plagiarism_checker
 $ cd plagiarism_checker
 
 # Install requirements
-$ pip3 install requirements.txt
+$ pip3 install -r requirements.txt
 
 # Run the app
 $ python main.py C:/Users/Desktop/papers -s 2 -o C:/Users/Desktop/results
