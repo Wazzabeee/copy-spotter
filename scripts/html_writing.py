@@ -111,7 +111,7 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenam
                       block_size: int) -> None:
     """ Write to HTML file texts that have been compared with highlighted similar blocks """
 
-    copy(r'..\templates\template.html', save_dir)  # Copy comparison template to curr dir
+    copy(path.join("..", "templates", "template.html"), save_dir)  # Copy comparison template to curr dir
     comp_path = path.join(save_dir, str(ind) + '.html')
     rename(path.join(save_dir, 'template.html'), comp_path)
 

@@ -32,7 +32,7 @@ def main() -> None:
                 if path.isdir(path.join(in_dir, direc)):
 
                     for file in listdir(path.join(in_dir, direc)):
-                        file_words = file_extension_call(in_dir + '\\' + direc + '\\' + file)
+                        file_words = file_extension_call(str(path.join(in_dir, direc, file)))
 
                         if file_words:  # If all files have supported format
                             processed_files.append(file_words)
