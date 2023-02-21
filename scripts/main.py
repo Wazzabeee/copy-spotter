@@ -24,7 +24,8 @@ def main() -> None:
     in_dir, out_dir, block_size = args.in_dir, args.out_dir, args.block_size
 
     if path.exists(in_dir):  # Check if specified path exists
-
+        if not path.isabs(in_dir):
+            in_dir = path.abspath(in_dir)
         if len(listdir(in_dir)) > 1:  # Check if there are at least 2 files at specified path
             filenames, processed_files = [], []
             students_names = get_student_names(in_dir)
@@ -43,6 +44,8 @@ def main() -> None:
                                 "script again.")
                             sys.exit()
             if out_dir is not None and path.exists(out_dir):
+                if not path.isabs(out_dir):
+                    out_dir = path.abspath(out_dir)
                 results_directory = out_dir
             else:
                 # Create new directory for storing html files
