@@ -66,3 +66,11 @@ To fix this you'll need to modify `class PDF(list):` in `C:/.../slate3k/classes.
 - In order to get the best results please provide text files of the same languages.
 - Pdf files that are made from scanned images won't be processed correctly.
 - If a specific file is not processed correctly feel free to [contact me](mailto:<clement.delteil@utbm.fr>) so that I can address the issue.
+
+**TODO**
+---
+- Add tests
+- Add CI
+- Add info in console for timing (tqdm)
+- Docker Image
+- Fix Slate3k by installing custom fork
