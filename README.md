@@ -1,6 +1,6 @@
 # Plagiarism checker
 
-![GIF demo](img/example.gif)
+![GIF demo](data/img/example.gif)
 
 ## About
 This program will proccess pdf, txt, docx, and txt files that can be found in the given input directory, find similar sentences, calculate similarity percentage, display a similarity table with links to side by side comparison where similar sentences are highlighted.
