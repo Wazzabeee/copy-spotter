@@ -1,0 +1,39 @@
+name: CI Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Do the tests pass?
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11.5
+    - name: Install dependencies and run tests
+      run: |
+        sudo apt-get update && sudo apt-get install -y libgomp1
+        pip install -r requirements.txt
+        pip install pytest
+        pytest tests/
+
+  good-practices:
+    runs-on: ubuntu-latest
+    name: Do the code respects Python standards?
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11.5
+    - name: Install dependencies and run linters
+      run: |
+        pip install -r requirements_lint.txt
+        pip install -r requirements.txt
+        black . --line-length=120 --check --verbose
+        flake8
+        pylint confident_learning/ --rcfile=setup.cfg --fail-under=9
+        mypy -p confident_learning --ignore-missing-imports --disallow-incomplete-defs
+    continue-on-error: true  # This is equivalent to allow_failure in GitLab CI
