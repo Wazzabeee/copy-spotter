@@ -34,6 +34,6 @@ jobs:
         pip install -r requirements.txt
         black . --line-length=120 --check --verbose
         flake8
-        pylint confident_learning/ --rcfile=setup.cfg --fail-under=9
-        mypy -p confident_learning --ignore-missing-imports --disallow-incomplete-defs
+        pylint scripts/ --rcfile=setup.cfg --fail-under=9
+        mypy -p scripts --ignore-missing-imports --disallow-incomplete-defs
     continue-on-error: true  # This is equivalent to allow_failure in GitLab CI
