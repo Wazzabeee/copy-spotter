@@ -35,9 +35,7 @@ def add_links_to_html_table(html_path: str) -> None:
         soup = Bs(html, "html.parser")
         file_ind = 0  # Cursor on file number for the naming of html files
 
-        for td_tag in soup.findAll(
-            "td"
-        ):  # Retrieve all data celss from html table in path
+        for td_tag in soup.findAll("td"):  # Retrieve all data celss from html table in path
             if is_float(td_tag.text):  # If td is not filename or -1
                 tmp = soup.new_tag(
                     "a",
@@ -69,9 +67,7 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> li
     colors = [f"#{randint(0, 0xFFFFFF):06X}" for _ in range(len(matching_blocks))]
 
     # Convert blocks from list of list of strings to list of strings
-    string_blocks = [
-        " ".join(map(str, text1[b.a : b.a + b.size])) for b in matching_blocks
-    ]
+    string_blocks = [" ".join(map(str, text1[b.a : b.a + b.size])) for b in matching_blocks]
 
     # Store lengths of blocks in text
     strings_len_list = blocks_list_to_strings_list(matching_blocks, text1)
@@ -96,9 +92,7 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> li
             span.string = str1[cursor : block[0]]
 
             # Span tag for the text in the matching sequence
-            blockspan = bs_obj.new_tag(
-                "span", style="color:" + colors[block[1]] + "; font-weight:bold"
-            )
+            blockspan = bs_obj.new_tag("span", style="color:" + colors[block[1]] + "; font-weight:bold")
             blockspan.string = str1[block[0] : block[0] + strings_len_list[block[1]]]
 
             # Append spans tags to results list
@@ -116,14 +110,10 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> li
     return results
 
 
-def papers_comparison(
-    save_dir: str, ind: int, text1: list, text2: list, filenames: tuple, block_size: int
-) -> None:
+def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple, block_size: int) -> None:
     """Write to HTML file texts that have been compared with highlighted similar blocks"""
 
-    copy(
-        path.join("..", "templates", "template.html"), save_dir
-    )  # Copy comparison template to curr dir
+    copy(path.join("..", "templates", "template.html"), save_dir)  # Copy comparison template to curr dir
     comp_path = path.join(save_dir, str(ind) + ".html")
     rename(path.join(save_dir, "template.html"), comp_path)
 

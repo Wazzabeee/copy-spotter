@@ -10,42 +10,28 @@ from operator import itemgetter
 from os import getcwd, path, makedirs
 
 
-def get_real_matching_blocks(
-    words_list1: list, words_list2: list, minimum_size: int = 2
-) -> list:
+def get_real_matching_blocks(words_list1: list, words_list2: list, minimum_size: int = 2) -> list:
     """Return list of matching blocks with size greater than n"""
 
-    matching_blocks = difflib.SequenceMatcher(
-        a=words_list1, b=words_list2
-    ).get_matching_blocks()
+    matching_blocks = difflib.SequenceMatcher(a=words_list1, b=words_list2).get_matching_blocks()
     if minimum_size and minimum_size > 0:
         return [b for b in matching_blocks if b.size >= minimum_size]
     else:
         return [b for b in matching_blocks if b.size >= 2]
 
 
-def get_ordered_blocks_positions(
-    string: str, matching_blocks: list, string_blocks: list
-) -> list:
+def get_ordered_blocks_positions(string: str, matching_blocks: list, string_blocks: list) -> list:
     """Return ordered list of all positions of matching blocks in string"""
 
     all_blocks_positions = []
 
     for block_ind, _ in enumerate(matching_blocks):
         # Find all positions of substring in string
-        block_positions = [
-            char
-            for char in range(len(string))
-            if string.startswith(string_blocks[block_ind], char)
-        ]
+        block_positions = [char for char in range(len(string)) if string.startswith(string_blocks[block_ind], char)]
 
         for position in block_positions:
             # We check if there is another block starting at the same position
-            var = [
-                pos_tuple
-                for pos_tuple in all_blocks_positions
-                if pos_tuple[0] == position
-            ]
+            var = [pos_tuple for pos_tuple in all_blocks_positions if pos_tuple[0] == position]
             if var:  # If there is one such block
                 size = len(string_blocks[var[0][1]])  # get size of block in var
                 if size < len(string_blocks[block_ind]):
@@ -67,9 +53,7 @@ def blocks_list_to_strings_list(blocks_list: list, curr_text: list) -> list:
 
     for block in blocks_list:
         # Append size of block in string
-        strings_len_list.append(
-            len(" ".join(map(str, curr_text[block.a : block.a + block.size])))
-        )
+        strings_len_list.append(len(" ".join(map(str, curr_text[block.a : block.a + block.size]))))
 
     return strings_len_list
 

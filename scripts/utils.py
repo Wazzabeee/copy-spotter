@@ -17,9 +17,7 @@ from nltk.stem import WordNetLemmatizer
 def parse_options():
     parser = argparse.ArgumentParser()
     parser.add_argument("in_dir", type=str, help="input directory for text files")
-    parser.add_argument(
-        "-o", "--out_dir", type=str, help="output directory for html results files"
-    )
+    parser.add_argument("-o", "--out_dir", type=str, help="output directory for html results files")
     parser.add_argument(
         "-s",
         "--block_size",
@@ -41,9 +39,7 @@ def is_float(value: float) -> bool:
 
 
 def get_student_names(main_path):
-    sub_directories = [
-        name for name in listdir(main_path) if path.isdir(path.join(main_path, name))
-    ]
+    sub_directories = [name for name in listdir(main_path) if path.isdir(path.join(main_path, name))]
 
     return [title.split("_")[0] for title in sub_directories]
 

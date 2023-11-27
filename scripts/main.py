@@ -26,26 +26,19 @@ def main() -> None:
     if path.exists(in_dir):  # Check if specified path exists
         if not path.isabs(in_dir):
             in_dir = path.abspath(in_dir)
-        if (
-            len(listdir(in_dir)) > 1
-        ):  # Check if there are at least 2 files at specified path
+        if len(listdir(in_dir)) > 1:  # Check if there are at least 2 files at specified path
             filenames, processed_files = [], []
             students_names = get_student_names(in_dir)
             for ind, direc in enumerate(listdir(in_dir)):
                 if path.isdir(path.join(in_dir, direc)):
                     for file in listdir(path.join(in_dir, direc)):
-                        file_words = file_extension_call(
-                            str(path.join(in_dir, direc, file))
-                        )
+                        file_words = file_extension_call(str(path.join(in_dir, direc, file)))
 
                         if file_words:  # If all files have supported format
                             processed_files.append(file_words)
                             filenames.append(students_names[ind])
                         else:  # At least one file was not supported
-                            print(
-                                "Remove files which are not txt, pdf, docx or odt and run the "
-                                "script again."
-                            )
+                            print("Remove files which are not txt, pdf, docx or odt and run the " "script again.")
                             sys.exit()
             if out_dir is not None and path.exists(out_dir):
                 if not path.isabs(out_dir):
@@ -53,9 +46,7 @@ def main() -> None:
                 results_directory = out_dir
             else:
                 # Create new directory for storing html files
-                results_directory = writing_results(
-                    datetime.now().strftime("%Y%m%d_%H%M%S")
-                )
+                results_directory = writing_results(datetime.now().strftime("%Y%m%d_%H%M%S"))
 
             difflib_scores = [[] for _ in range(len(processed_files))]
             file_ind = 0
@@ -91,8 +82,7 @@ def main() -> None:
                 print("Results file was not created...")
         else:
             print(
-                "Minimum number of files is not present. Please check that there are at least "
-                "two files to compare."
+                "Minimum number of files is not present. Please check that there are at least " "two files to compare."
             )
             sys.exit()
     else:
