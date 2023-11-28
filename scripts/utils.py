@@ -15,6 +15,20 @@ from nltk.stem import WordNetLemmatizer
 
 
 def parse_options():
+    """
+    Parses command-line arguments for the script.
+
+    This function sets up an argument parser for the script, specifying the required input directory
+    and optional output directory and block size arguments.
+
+    Args:
+    None
+
+    Returns:
+    argparse.Namespace: The parsed command-line arguments, where 'in_dir' is the input directory,
+    'out_dir' is the optional output directory, and 'block_size' is the optional minimum number of
+    consecutive similar words for block comparison (default is 2).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("in_dir", type=str, help="input directory for text files")
     parser.add_argument("-o", "--out_dir", type=str, help="output directory for html results files")
@@ -39,6 +53,18 @@ def is_float(value: float) -> bool:
 
 
 def get_student_names(main_path):
+    """
+    Extracts student names from the directory names within the specified main path.
+
+    This function assumes that each sub-directory within the main path represents a student and
+    that the student's name is the first part of the sub-directory name, delimited by an underscore.
+
+    Args:
+    main_path (str): The path of the main directory containing student sub-directories.
+
+    Returns:
+    list: A list of student names extracted from the sub-directory names.
+    """
     sub_directories = [name for name in listdir(main_path) if path.isdir(path.join(main_path, name))]
 
     return [title.split("_")[0] for title in sub_directories]

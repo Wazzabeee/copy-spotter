@@ -11,10 +11,13 @@ from odf.opendocument import load
 
 def get_file_extension(filepath: str) -> str:
     """Return the file extension of the file at the specified path"""
+    if not path.isfile(filepath):
+        print("Invalid file path")
+        return ""
 
     try:
         return path.splitext(filepath)[1]
-    except (Exception,):
+    except IndexError:
         print("File extension error")
         return ""
 
@@ -44,8 +47,8 @@ def get_words_from_pdf_file(pdf_path: str) -> list:
     with open(pdf_path, "rb") as file:
         extracted_text = slate.PDF(file)
 
-    nested_lists_length_sum = sum([len(temp) for temp in extracted_text])
-    count_line_return = sum([string.count("\n") for string in extracted_text])
+    nested_lists_length_sum = sum(len(temp) for temp in extracted_text)
+    count_line_return = sum(string.count("\n") for string in extracted_text)
 
     # Check \n ratio compared to length of text
     if nested_lists_length_sum / count_line_return > 10:
@@ -57,11 +60,11 @@ def get_words_from_pdf_file(pdf_path: str) -> list:
         return [item for sublist in extracted_text for item in sublist]
 
     # Pdf format is not readable by Slate library
-    get_words_from_special_pdf(pdf_path)
+    return get_words_from_special_pdf(pdf_path)
 
 
-def get_words_from_special_pdf(pdf_path: str) -> str:
-    """Return list of words from pdf file when Slate library can't scrape it"""
+def get_words_from_special_pdf(pdf_path: str) -> list:
+    """Return list of words from a PDF file when the Slate library can't scrape it"""
 
     with pdfplumber.open(pdf_path) as file:
         concat_string = ""
@@ -69,7 +72,8 @@ def get_words_from_special_pdf(pdf_path: str) -> str:
             text_page = page.extract_text() + "\n"
             concat_string += text_page
 
-    return " ".join(concat_string.replace("\xa0", " ").strip().split())
+    # Split the string into words and return as a list
+    return concat_string.replace("\xa0", " ").strip().split()
 
 
 def get_words_from_txt_file(txt_path: str) -> list:

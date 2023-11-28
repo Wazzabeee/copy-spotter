@@ -9,6 +9,7 @@ It inserts comparison results in corresponding html files
 from os import fsync, rename, path
 from random import randint
 from shutil import copy
+from typing import Any, List
 
 from bs4 import BeautifulSoup as Bs
 from tabulate import tabulate
@@ -58,7 +59,7 @@ def add_links_to_html_table(html_path: str) -> None:
 def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> list:
     """Return list of spans with colors for HTML rendering"""
 
-    results = [[], []]  # List of spans list
+    results: List[List[Any]] = [[], []]  # List of spans list
 
     # Get matching blocks with chosen minimum size
     matching_blocks = get_real_matching_blocks(text1, text2, block_size)
@@ -137,8 +138,8 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenam
 def results_to_html(scores: list, files_names: list, html_path: str) -> None:
     """Write similarity results to HTML page"""
 
-    for ind, _ in enumerate(files_names):
-        scores[ind].insert(0, files_names[ind])
+    for ind, file_name in enumerate(files_names):
+        scores[ind].insert(0, file_name)
 
     scores.insert(0, files_names)
     scores[0].insert(0, "")
