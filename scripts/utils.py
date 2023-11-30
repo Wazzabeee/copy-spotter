@@ -9,6 +9,7 @@ It can lemmatize, remove stop words, remove numbers for text processing
 import argparse
 from os import path, listdir
 from time import sleep
+from typing import Any
 
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -42,12 +43,10 @@ def parse_options():
     return parser.parse_args()
 
 
-def is_float(value: float) -> bool:
-    """Return true if value is a float and not equal to -1"""
-
+def is_float(value: Any) -> bool:
+    """Return true if value is a float and not equal to -1."""
     try:
-        temp = float(value)
-        return temp != -1
+        return float(value) != -1
     except ValueError:
         return False
 
@@ -113,7 +112,7 @@ def remove_stop_words(words_list: list) -> list:
 
     en_stop_words = set(stopwords.words("english"))
 
-    return [w for w in words_list if str(w).lower not in en_stop_words]
+    return [w for w in words_list if str(w).lower() not in en_stop_words]
 
 
 def lemmatize(words_list: list) -> list:
