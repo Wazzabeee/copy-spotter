@@ -13,11 +13,11 @@ from datetime import datetime
 from os import listdir, path
 from typing import List
 
-from html_writing import add_links_to_html_table, results_to_html, papers_comparison
-from html_utils import writing_results
-from processing_files import file_extension_call
-from similarity import difflib_overlap
-from utils import wait_for_file, get_student_names, parse_options
+from scripts.html_writing import add_links_to_html_table, results_to_html, papers_comparison
+from scripts.html_utils import writing_results
+from scripts.processing_files import file_extension_call
+from scripts.similarity import difflib_overlap
+from scripts.utils import wait_for_file, get_student_names, parse_options
 
 
 def main() -> None:

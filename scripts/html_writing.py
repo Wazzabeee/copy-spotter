@@ -6,6 +6,7 @@ It compares two text files
 It inserts comparison results in corresponding html files
 
 """
+
 from os import fsync, rename, path
 from random import randint
 from shutil import copy
@@ -14,13 +15,13 @@ from typing import Any, List
 from bs4 import BeautifulSoup as Bs
 from tabulate import tabulate
 
-from html_utils import (
+from scripts.html_utils import (
     get_color_from_similarity,
     get_real_matching_blocks,
     blocks_list_to_strings_list,
     get_ordered_blocks_positions,
 )
-from utils import is_float
+from scripts.utils import is_float
 
 
 def add_links_to_html_table(html_path: str) -> None:
@@ -114,7 +115,7 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> li
 def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple, block_size: int) -> None:
     """Write to HTML file texts that have been compared with highlighted similar blocks"""
 
-    copy(path.join("..", "templates", "template.html"), save_dir)  # Copy comparison template to curr dir
+    copy(path.join("templates", "template.html"), save_dir)  # Copy comparison template to curr dir
     comp_path = path.join(save_dir, str(ind) + ".html")
     rename(path.join(save_dir, "template.html"), comp_path)
 

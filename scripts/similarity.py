@@ -7,9 +7,10 @@ It calculates similarity scores with :
 - overlapping words
 
 """
+
 import difflib
 
-from utils import remove_numbers, remove_stop_words, lemmatize
+from scripts.utils import remove_numbers, remove_stop_words, lemmatize
 
 
 def difflib_overlap(word_token1: list, word_token2: list) -> float:
