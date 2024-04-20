@@ -19,6 +19,7 @@ repos:
         language: system
         args: ['--rcfile=setup.cfg', '--fail-under=8']
         types: [python]
+        exclude: '^setup\.py$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.9.0

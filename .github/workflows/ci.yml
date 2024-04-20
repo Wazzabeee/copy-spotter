@@ -1,6 +1,12 @@
 name: CI Pipeline
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
 
 jobs:
   test:
@@ -37,3 +43,22 @@ jobs:
         pylint scripts/ --rcfile=setup.cfg --fail-under=9
         mypy -p scripts --ignore-missing-imports --disallow-incomplete-defs
     continue-on-error: true
+
+  release:
+    needs: [ test, good-practices ]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11.5'
+      - name: Build and publish
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          pip install setuptools wheel twine
+          python setup.py sdist bdist_wheel
+          twine upload dist/*
