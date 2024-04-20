@@ -115,7 +115,7 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> li
 def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple, block_size: int) -> None:
     """Write to HTML file texts that have been compared with highlighted similar blocks"""
 
-    copy(path.join("..", "templates", "template.html"), save_dir)  # Copy comparison template to curr dir
+    copy(path.join("templates", "template.html"), save_dir)  # Copy comparison template to curr dir
     comp_path = path.join(save_dir, str(ind) + ".html")
     rename(path.join(save_dir, "template.html"), comp_path)
 
