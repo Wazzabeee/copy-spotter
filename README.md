@@ -71,4 +71,5 @@ To fix this you'll need to modify `class PDF(list):` in `C:/.../slate3k/classes.
 - Add more tests
 - Add info in console for timing (tqdm)
 - Add CSS to HTML Template
+- Add support for other folder structures
 - Fix Slate3k by installing custom fork
