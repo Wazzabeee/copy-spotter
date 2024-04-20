@@ -17,7 +17,7 @@ repos:
         name: pylint
         entry: pylint
         language: system
-        args: ['.', '--rcfile=setup.cfg', '--fail-under=8']
+        args: ['--rcfile=setup.cfg', '--fail-under=8']
         types: [python]
 
   - repo: https://github.com/pre-commit/mirrors-mypy

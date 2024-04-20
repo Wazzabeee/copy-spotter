@@ -15,13 +15,13 @@ from typing import Any, List
 from bs4 import BeautifulSoup as Bs
 from tabulate import tabulate
 
-from html_utils import (
+from scripts.html_utils import (
     get_color_from_similarity,
     get_real_matching_blocks,
     blocks_list_to_strings_list,
     get_ordered_blocks_positions,
 )
-from utils import is_float
+from scripts.utils import is_float
 
 
 def add_links_to_html_table(html_path: str) -> None:

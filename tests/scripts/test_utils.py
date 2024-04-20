@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+import nltk
 from scripts.utils import (
     parse_options,
     is_float,
@@ -8,7 +9,6 @@ from scripts.utils import (
     remove_stop_words,
     lemmatize,
 )
-import nltk
 
 
 class TestUtils(unittest.TestCase):
