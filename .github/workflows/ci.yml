@@ -3,9 +3,9 @@ name: CI Pipeline
 on:
   push:
     branches:
-      - main  # Ensures actions run on pushes to the main branch
+      - main
     tags:
-      - 'v*'  # Ensures actions run on tag pushes that match the version pattern
+      - 'v*'
   pull_request:
 
 jobs:

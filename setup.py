@@ -21,7 +21,7 @@ setup(
     },
     author="Clément Delteil",
     author_email="clement45.delteil45@gmail.com",
-    description="Make plagiarism detection easier. This script will find similar sentences between given files and "
+    description="Make plagiarism detection easier. This package will find similar sentences between given files and "
     "highlight them in a side by side comparison.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

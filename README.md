@@ -11,11 +11,10 @@ This project was made part of my internship at the "Human Computer Humans Intera
 ---
 
 ```
-Usage: main.py input_directory [OPTIONS]
+Usage: python -m scripts.main.py input_directory [OPTIONS]
 
-  Perform a similarity analysis of all text files available in given input directory.
-  Developped by Clément Delteil -> (Github: wazzabeee)
-
+  Performs a similarity analysis of all text files available in given input directory.
+  Developed by Clément Delteil -> (Github: Wazzabeee)
 
 Options:
   -block_size, -s  Set minimum number of consecutive and similar words detected. (Default is 2)
@@ -65,12 +64,11 @@ To fix this you'll need to modify `class PDF(list):` in `C:/.../slate3k/classes.
 - Please make sure that all text files are closed before running the program.
 - In order to get the best results please provide text files of the same languages.
 - Pdf files that are made from scanned images won't be processed correctly.
-- If a specific file is not processed correctly feel free to [contact me](mailto:<clement.delteil@utbm.fr>) so that I can address the issue.
+- If a specific file is not processed correctly feel free to [contact me](mailto:<clement45.delteil45@gmail.com>) so that I can address the issue.
 
 **TODO**
 ---
-- Add tests
-- Add CI
+- Add more tests
 - Add info in console for timing (tqdm)
-- Docker Image
+- Add CSS to HTML Template
 - Fix Slate3k by installing custom fork
