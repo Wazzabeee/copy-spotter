@@ -5,6 +5,7 @@ It gets ordered positions of matching blocks in text.
 It returns colors depending on the similarity score.
 
 """
+
 import difflib
 from operator import itemgetter
 from typing import List, Tuple

@@ -6,6 +6,7 @@ It compares two text files
 It inserts comparison results in corresponding html files
 
 """
+
 from os import fsync, rename, path
 from random import randint
 from shutil import copy

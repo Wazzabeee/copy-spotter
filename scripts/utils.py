@@ -6,6 +6,7 @@ It waits for file creation
 It can lemmatize, remove stop words, remove numbers for text processing
 
 """
+
 import argparse
 from os import path, listdir
 from time import sleep

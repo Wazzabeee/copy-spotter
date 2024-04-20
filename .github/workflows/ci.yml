@@ -36,4 +36,4 @@ jobs:
         flake8
         pylint scripts/ --rcfile=setup.cfg --fail-under=9
         mypy -p scripts --ignore-missing-imports --disallow-incomplete-defs
-    continue-on-error: true  # This is equivalent to allow_failure in GitLab CI
+    continue-on-error: true

@@ -7,6 +7,7 @@ It calculates similarity scores with :
 - overlapping words
 
 """
+
 import difflib
 
 from utils import remove_numbers, remove_stop_words, lemmatize
