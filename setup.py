@@ -1,11 +1,19 @@
+import subprocess
 from setuptools import setup, find_packages
 
-with open("VERSION") as version_file:
-    version = version_file.read().strip()
+
+def get_version():
+    try:
+        # Get the latest tag from Git
+        version = subprocess.check_output(["git", "describe", "--tags"]).strip().decode("utf-8")
+    except Exception:
+        version = "0.1.0"
+    return version
+
 
 setup(
     name="copy-spotter",
-    version=version,
+    version=get_version(),
     packages=find_packages(),
     install_requires=[
         "beautifulsoup4==4.10.0",

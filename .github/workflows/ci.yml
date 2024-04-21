@@ -45,20 +45,30 @@ jobs:
     continue-on-error: true
 
   release:
-    needs: [ test, good-practices ]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.11.5'
-      - name: Build and publish
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          pip install setuptools wheel twine
-          python setup.py sdist bdist_wheel
-          twine upload dist/*
+      needs: [test, good-practices]
+      runs-on: ubuntu-latest
+      if: github.ref == 'refs/heads/main'
+      steps:
+        - uses: actions/checkout@v2
+          with:
+            fetch-depth: 0
+        - name: Bump version and push tag
+          uses: anothrNick/github-tag-action@1.26.0
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            DEFAULT_BUMP: auto
+            MAJOR_PATTERN: '^BREAKING CHANGE:'
+            MINOR_PATTERN: '^feat:'
+            PATCH_PATTERN: '^fix:'
+        - name: Set up Python
+          uses: actions/setup-python@v2
+          with:
+            python-version: '3.11.5'
+        - name: Build and publish
+          env:
+            TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+            TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          run: |
+            pip install setuptools wheel twine
+            python setup.py sdist bdist_wheel
+            twine upload dist/*
