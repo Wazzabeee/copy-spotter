@@ -1,4 +1,4 @@
-# Plagiarism Detector
+# Copy Spotter
 ![GIF demo](data/img/example.gif)
 
 ## About
@@ -26,10 +26,10 @@ Options:
 
 ```bash
 # Clone this repository
-$ git clone https://github.com/Wazzabeee/plagiarism_checker
+$ git clone https://github.com/Wazzabeee/copy_spotter
 
 # Go into the repository
-$ cd plagiarism_checker
+$ cd copy_spotter
 
 # Install requirements
 $ pip install -r requirements.txt

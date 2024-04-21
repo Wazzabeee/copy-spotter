@@ -25,7 +25,7 @@ setup(
     "highlight them in a side by side comparison.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/Wazzabeee/plagiarism_checker",
+    url="https://github.com/Wazzabeee/copy-spotter",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: MIT License",
