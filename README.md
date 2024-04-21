@@ -1,5 +1,4 @@
-# Plagiarism checker
-
+# Plagiarism Detector
 ![GIF demo](data/img/example.gif)
 
 ## About

@@ -4,7 +4,7 @@ with open("VERSION") as version_file:
     version = version_file.read().strip()
 
 setup(
-    name="plagiarism-checker",
+    name="plagiarism-detector",
     version=version,
     packages=find_packages(),
     install_requires=[
