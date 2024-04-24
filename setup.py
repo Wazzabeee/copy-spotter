@@ -40,4 +40,9 @@ setup(
         "Programming Language :: Python",
     ],
     python_requires=">=3.10",
+    entry_points={
+        "console_scripts": [
+            "copy-spotter=scripts.main:main",
+        ],
+    },
 )
