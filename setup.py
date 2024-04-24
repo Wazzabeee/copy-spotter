@@ -1,16 +1,24 @@
 import subprocess
+import logging
 from setuptools import setup, find_packages
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def get_version(default="0.1.0"):
     try:
         # Get the latest tag from Git
         version = subprocess.check_output(["git", "describe", "--tags", "--long"]).strip().decode("utf-8")
+        logging.info(f"Original version from git: {version}")
         # Convert to PEP 440 compliant version
         if "-" in version:  # Checking if the description is a post-release
             parts = version.split("-")
             version = parts[0] + ".post" + parts[1] + "+" + parts[2].replace("g", "")
+            logging.info(f"Normalized version: {version}")
     except Exception:
+        logging.error("Failed to get version from git, using default version.", exc_info=True)
         version = default
     return version
 
