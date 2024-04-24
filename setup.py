@@ -9,14 +9,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 def get_version(default="0.1.0"):
     try:
-        # Get the latest tag from Git
         version = subprocess.check_output(["git", "describe", "--tags", "--long"]).strip().decode("utf-8")
         logging.info(f"Original version from git: {version}")
-        # Convert to PEP 440 compliant version
-        if "-" in version:  # Checking if the description is a post-release
+
+        if "-" in version:
+            # Example output: v0.1.0-3-gaf8ca44
+            # Convert to PEP 440 compliant version without local version identifiers
             parts = version.split("-")
-            version = parts[0] + ".post" + parts[1] + "+" + parts[2].replace("g", "")
-            logging.info(f"Normalized version: {version}")
+            base_version = parts[0]  # 'v0.1.0'
+            commit_count = parts[1]  # '3'
+
+            # Remove leading 'v' and split version components
+            major, minor, patch = map(int, base_version.lstrip("v").split("."))
+
+            # Increment patch version by commit count
+            patch += int(commit_count)
+            version = f"{major}.{minor}.{patch}"
+            logging.info(f"Normalized version for PyPI: {version}")
     except Exception:
         logging.error("Failed to get version from git, using default version.", exc_info=True)
         version = default
