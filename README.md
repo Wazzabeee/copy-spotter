@@ -12,9 +12,9 @@ This program will process pdf, txt, docx, and txt files that can be found in the
 **Usage**
 ---
 
-```
-pip install copy-spotter
-copy-spotter [-s] [-o] [-h] input_directory
+```bash
+$ pip install copy-spotter
+$ copy-spotter [-s] [-o] [-h] input_directory
 ```
 ***Positional Arguments:***
 * `input_directory`: Directory that contains one folder per pdf file (see `data/pdf/plagiarism` for example)
@@ -26,7 +26,7 @@ copy-spotter [-s] [-o] [-h] input_directory
 
 **Examples**
 ---
-```
+```bash
 # Analyze documents in 'data/pdf/plagiarism', with default settings
 $ copy-spotter data/pdf/plagiarism
 
@@ -37,7 +37,7 @@ $ copy-spotter data/pdf/plagiarism -s 5 -o results/output
 **Development Setup:**
 ---
 
-```
+```bash
 # Clone this repository
 $ git clone https://github.com/Wazzabeee/copy_spotter
 
@@ -58,14 +58,13 @@ $ pytest tests/
 
 # Run package locally
 $ python -m scripts.main.py [-s] [-o] [-h] input_directory
-
 ```
 
 **Issues**
 ---
 On the first run you might get :
 - an ImportError from pdfminer library 
-``` 
+``` python
 ImportError: cannot import name 'uint_value' from 'pdfminer.pdftypes' (C:/.../pdfminer/pdftypes.py)
 ```
 To fix this, please uninstall pdfminer3k and pdfminer.six via 
@@ -77,7 +76,7 @@ Then install them again via
 
 
 - a TypeError from Slate3k library 
-```
+```python
 TypeError __init__() missing 1 required positional arg 'parser' in "C:/.../slate3k/classes.py
 ```
 To fix this you'll need to modify `class PDF(list):` in `C:/.../slate3k/classes.py`. In `def __init__()` change both `if PYTHON 3:` <br/> to `if not PYTHON 3:` on lines 58 and 72.
