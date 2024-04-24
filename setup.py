@@ -2,12 +2,16 @@ import subprocess
 from setuptools import setup, find_packages
 
 
-def get_version():
+def get_version(default="0.1.0"):
     try:
         # Get the latest tag from Git
-        version = subprocess.check_output(["git", "describe", "--tags"]).strip().decode("utf-8")
+        version = subprocess.check_output(["git", "describe", "--tags", "--long"]).strip().decode("utf-8")
+        # Convert to PEP 440 compliant version
+        if "-" in version:  # Checking if the description is a post-release
+            parts = version.split("-")
+            version = parts[0] + ".post" + parts[1] + "+" + parts[2].replace("g", "")
     except Exception:
-        version = "0.1.0"
+        version = default
     return version
 
 
