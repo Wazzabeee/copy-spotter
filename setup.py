@@ -1,35 +1,9 @@
 import subprocess
-import logging
 from setuptools import setup, find_packages
 
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-
-def get_version(default="0.1.0"):
-    try:
-        version = subprocess.check_output(["git", "describe", "--tags", "--long"]).strip().decode("utf-8")
-        logging.info(f"Original version from git: {version}")
-
-        if "-" in version:
-            # Example output: v0.1.0-3-gaf8ca44
-            # Convert to PEP 440 compliant version without local version identifiers
-            parts = version.split("-")
-            base_version = parts[0]  # 'v0.1.0'
-            commit_count = parts[1]  # '3'
-
-            # Remove leading 'v' and split version components
-            major, minor, patch = map(int, base_version.lstrip("v").split("."))
-
-            # Increment patch version by commit count
-            patch += int(commit_count)
-            version = f"{major}.{minor}.{patch}"
-            logging.info(f"Normalized version for PyPI: {version}")
-    except Exception:
-        logging.error("Failed to get version from git, using default version.", exc_info=True)
-        version = default
-    return version
+def get_version():
+    return subprocess.check_output(["git", "describe", "--tags", "--abbrev=0"]).strip().decode("utf-8")[1:]
 
 
 setup(
