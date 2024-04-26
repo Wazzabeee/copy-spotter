@@ -60,27 +60,6 @@ $ pytest tests/
 $ python -m scripts.main.py [-s] [-o] [-h] input_directory
 ```
 
-**Issues**
----
-On the first run you might get :
-- an ImportError from pdfminer library 
-``` python
-ImportError: cannot import name 'uint_value' from 'pdfminer.pdftypes' (C:/.../pdfminer/pdftypes.py)
-```
-To fix this, please uninstall pdfminer3k and pdfminer.six via 
-``` pip uninstall pdfminer3k ```
-``` pip uninstall pdfminer.six ```
-Then install them again via 
-``` pip install pdfminer3k ```
-``` pip install pdfminer.six ```
-
-
-- a TypeError from Slate3k library 
-```python
-TypeError __init__() missing 1 required positional arg 'parser' in "C:/.../slate3k/classes.py
-```
-To fix this you'll need to modify `class PDF(list):` in `C:/.../slate3k/classes.py`. In `def __init__()` change both `if PYTHON 3:` <br/> to `if not PYTHON 3:` on lines 58 and 72.
-
 **Recommandations**
 ---
 - Please make sure that all text files are closed before running the program.
@@ -96,5 +75,5 @@ To fix this you'll need to modify `class PDF(list):` in `C:/.../slate3k/classes.
 - Add info in console for timing (tqdm)
 - Add CSS to HTML Template to make the results better looking
 - Add support for other folder structures (right now the package is expecting one pdf files per folder)
-- Add custom naming option for pdf files instead of using first part before _
+- Add custom naming option for pdf files
 - Fix Slate3k by installing custom fork (check if still relevant)
