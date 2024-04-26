@@ -8,6 +8,8 @@ __pycache__/
 
 .idea/
 
+src/slate3k/
+
 # Distribution / packaging
 .Python
 build/
