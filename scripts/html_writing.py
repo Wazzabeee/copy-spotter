@@ -43,7 +43,7 @@ def add_links_to_html_table(html_path: str) -> None:
                     "a",
                     href="file:///" + html_path.replace("_results", str(file_ind)),
                     target="_blank",
-                    style="color:" + get_color_from_similarity(td_tag.text),
+                    style="color:" + get_color_from_similarity(float(td_tag.text)),
                 )
 
                 td_tag.string.wrap(tmp)  # We wrap the td string between the hyperlink

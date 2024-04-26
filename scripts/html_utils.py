@@ -74,11 +74,11 @@ def writing_results(dir_name: str) -> str:
 def get_color_from_similarity(similarity_score: float) -> str:
     """Return css style according to similarity score"""
 
-    if float(similarity_score) > 15:
+    if similarity_score > 15:
         return "#990033; font-weight: bold"
-    if float(similarity_score) > 10:
+    if similarity_score > 10:
         return "#ff6600"
-    if float(similarity_score) > 5:
+    if similarity_score > 5:
         return "#ffcc00"
 
     return "green"
