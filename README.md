@@ -57,7 +57,7 @@ $ pip install pytest
 $ pytest tests/
 
 # Run package locally
-$ python -m scripts.main.py [-s] [-o] [-h] input_directory
+$ python -m scripts.main [-s] [-o] [-h] input_directory
 ```
 
 **Recommandations**
