@@ -17,7 +17,7 @@ $ pip install copy-spotter
 $ copy-spotter [-s] [-o] [-h] input_directory
 ```
 ***Positional Arguments:***
-* `input_directory`: Directory that contains one folder per pdf file (see `data/pdf/plagiarism` for example)
+* `input_directory`: One directory that contains all files (pdf, txt, docx, odt) (see `data/pdf/plagiarism` for example)
 
 ```
 input_directory/
