@@ -4,10 +4,9 @@ import re
 import zipfile
 from os import path
 
-import pdfplumber
-import slate3k as slate
 from odf import text, teletype
 from odf.opendocument import load
+from pdfminer.high_level import extract_text
 
 
 def get_file_extension(filepath: str) -> str:
@@ -39,38 +38,19 @@ def file_extension_call(file: str) -> list:
 
 
 def get_words_from_pdf_file(pdf_path: str) -> list:
-    """Return list of words from pdf file at specified path"""
+    """Return list of words from pdf file at specified path using pdfminer.six."""
 
-    with open(pdf_path, "rb") as file:
-        extracted_text = slate.PDF(file)
+    # Extract text from the PDF file using pdfminer
+    extracted_text = extract_text(pdf_path)
 
-    nested_lists_length_sum = sum(len(temp) for temp in extracted_text)
-    count_line_return = sum(string.count("\n") for string in extracted_text)
+    # Clean up the extracted text
+    cleaned_text = re.sub(r"\s+", " ", extracted_text)
+    cleaned_text = re.sub(r"<(.|\n)*?>", "", cleaned_text)
 
-    # Check \n ratio compared to length of text
-    if nested_lists_length_sum / count_line_return > 10:
-        for i, _ in enumerate(extracted_text):
-            extracted_text[i] = extracted_text[i].replace("\n", " ")
-            extracted_text[i] = re.sub("<(.|\n)*?>", "", str(extracted_text[i]))
-            extracted_text[i] = re.findall(r"\w+", extracted_text[i].lower())
+    # Extract words from the cleaned text
+    words = re.findall(r"\w+", cleaned_text.lower())
 
-        return [item for sublist in extracted_text for item in sublist]
-
-    # Pdf format is not readable by Slate library
-    return get_words_from_special_pdf(pdf_path)
-
-
-def get_words_from_special_pdf(pdf_path: str) -> list:
-    """Return list of words from a PDF file when the Slate library can't scrape it"""
-
-    with pdfplumber.open(pdf_path) as file:
-        concat_string = ""
-        for page in file.pages:
-            text_page = page.extract_text() + "\n"
-            concat_string += text_page
-
-    # Split the string into words and return as a list
-    return concat_string.replace("\xa0", " ").strip().split()
+    return words
 
 
 def get_words_from_txt_file(txt_path: str) -> list:
