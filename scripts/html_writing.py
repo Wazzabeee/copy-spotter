@@ -117,12 +117,12 @@ def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenam
     """Write to HTML file texts that have been compared with highlighted similar blocks"""
 
     try:
-        with importlib.resources.path("copy_spotter.templates", "template.html") as template_path:
+        with importlib.resources.path("scripts", "template.html") as template_path:
             comp_path = path.join(save_dir, f"{ind}.html")
             copyfile(template_path, comp_path)
     except ModuleNotFoundError:
         # Fallback for local development
-        template_path_local = path.join("templates", "template.html")
+        template_path_local = path.join("template.html")
         comp_path = path.join(save_dir, str(ind) + ".html")
 
         # Copy the template to the save directory under a new name
