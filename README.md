@@ -7,7 +7,7 @@
 ![GIF demo](data/img/example.gif)
 
 ## About
-This program will process pdf, txt, docx, and txt files that can be found in the given input directory, find similar sentences, calculate similarity percentage, display a similarity table with links to side by side comparison where similar sentences are highlighted.
+This program will process pdf, txt, docx, and odt files that can be found in the given input directory, find similar sentences, calculate similarity percentage, display a similarity table with links to side by side comparison where similar sentences are highlighted.
 
 **Usage**
 ---
