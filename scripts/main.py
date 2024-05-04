@@ -18,7 +18,7 @@ from scripts.html_writing import add_links_to_html_table, results_to_html, paper
 from scripts.html_utils import writing_results
 from scripts.processing_files import file_extension_call
 from scripts.similarity import difflib_overlap
-from scripts.utils import wait_for_file, get_student_names, parse_options
+from scripts.utils import wait_for_file, parse_options
 
 
 class MinimumFilesError(Exception):
@@ -62,7 +62,7 @@ def main() -> None:
         in_dir = path.abspath(in_dir)
 
     files = [
-        f for f in listdir(in_dir) if path.isdir(path.join(in_dir, f)) or f.endswith(("txt", "pdf", "docx", "odt"))
+        f for f in listdir(in_dir) if path.isfile(path.join(in_dir, f)) and f.endswith(("txt", "pdf", "docx", "odt"))
     ]
 
     if len(files) < 2:
@@ -71,19 +71,14 @@ def main() -> None:
         )
 
     filenames, processed_files = [], []
-    students_names = get_student_names(in_dir)
 
-    for ind, direc in enumerate(tqdm(listdir(in_dir), desc="Processing Directories")):
-        if path.isdir(path.join(in_dir, direc)):
-            for file in listdir(path.join(in_dir, direc)):
-                file_words = file_extension_call(str(path.join(in_dir, direc, file)))
-                if file_words:  # If all files have supported format
-                    processed_files.append(file_words)
-                    filenames.append(students_names[ind])
-                else:
-                    raise UnsupportedFileError(
-                        "Remove files which are not txt, pdf, docx, or odt and run the script again."
-                    )
+    for file in tqdm(files, desc="Processing Files"):
+        file_words = file_extension_call(str(path.join(in_dir, file)))
+        if file_words:  # If all files have supported format
+            processed_files.append(file_words)
+            filenames.append(path.splitext(file)[0])
+        else:
+            raise UnsupportedFileError("Remove files which are not txt, pdf, docx, or odt and run the script again.")
 
     if out_dir is not None and path.exists(out_dir):
         if not path.isabs(out_dir):

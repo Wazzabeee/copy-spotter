@@ -19,6 +19,14 @@ $ copy-spotter [-s] [-o] [-h] input_directory
 ***Positional Arguments:***
 * `input_directory`: Directory that contains one folder per pdf file (see `data/pdf/plagiarism` for example)
 
+```
+input_directory/
+│
+├── file_1.docx
+├── file_2.pdf
+└── file_3.pdf
+```
+
 ***Optional Arguments:***
 * `-s`, `--block-size`: Set minimum number of consecutive and similar words detected. (Default is 2)
 * `-o`, `--out_dir`: Set the output directory for html files. (Default is creating a new directory called results)
@@ -72,8 +80,4 @@ $ python -m scripts.main [-s] [-o] [-h] input_directory
 ---
 - Add more tests on existing functions
 - Implement OCR with tesseract for scanned documents
-- Add info in console for timing (tqdm)
-- Add CSS to HTML Template to make the results better looking
-- Add support for other folder structures (right now the package is expecting one pdf files per folder)
 - Add custom naming option for pdf files
-- Fix Slate3k by installing custom fork (check if still relevant)
