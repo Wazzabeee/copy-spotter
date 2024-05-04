@@ -9,10 +9,11 @@ It inserts comparison results in corresponding html files
 
 from os import fsync, path
 from random import randint
-from shutil import copy
+from shutil import copyfile, copy
 from typing import Any, List
 
 from bs4 import BeautifulSoup as Bs
+import importlib.resources
 from tabulate import tabulate
 
 from scripts.html_utils import (
@@ -114,11 +115,18 @@ def get_span_blocks(bs_obj: Bs, text1: list, text2: list, block_size: int) -> li
 
 def papers_comparison(save_dir: str, ind: int, text1: list, text2: list, filenames: tuple, block_size: int) -> None:
     """Write to HTML file texts that have been compared with highlighted similar blocks"""
-    template_path = path.join("templates", "template.html")
-    comp_path = path.join(save_dir, str(ind) + ".html")
 
-    # Copy the template to the save directory under a new name
-    copy(template_path, comp_path)
+    try:
+        with importlib.resources.path("copy_spotter.templates", "template.html") as template_path:
+            comp_path = path.join(save_dir, f"{ind}.html")
+            copyfile(template_path, comp_path)
+    except ModuleNotFoundError:
+        # Fallback for local development
+        template_path_local = path.join("templates", "template.html")
+        comp_path = path.join(save_dir, str(ind) + ".html")
+
+        # Copy the template to the save directory under a new name
+        copy(template_path_local, comp_path)
 
     with open(comp_path, encoding="utf-8") as html:
         soup = Bs(html, "html.parser")
