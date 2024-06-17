@@ -4,6 +4,9 @@ import re
 import zipfile
 from os import path
 
+import slate3k as slate
+import pytesseract
+from pdf2image import convert_from_path
 from odf import text, teletype
 from odf.opendocument import load
 from pdfminer.high_level import extract_text
@@ -47,10 +50,20 @@ def get_words_from_pdf_file(pdf_path: str) -> list:
     cleaned_text = re.sub(r"\s+", " ", extracted_text)
     cleaned_text = re.sub(r"<(.|\n)*?>", "", cleaned_text)
 
-    # Extract words from the cleaned text
-    words = re.findall(r"\w+", cleaned_text.lower())
+    # Convert the pdfs into images
+    pages = convert_from_path(pdf_path, 300)
 
-    return words
+    extracted_text = ''
+
+    # Iterate over every page
+    for page in pages:
+        # Extract the tex from the current page using OCR
+        text = pytesseract.image_to_string(page, lang='eng')
+
+        # Concat the extracted text
+        extracted_text += text
+
+    return extracted_text.replace("\xa0", " ").strip().split()
 
 
 def get_words_from_txt_file(txt_path: str) -> list:

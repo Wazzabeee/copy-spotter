@@ -7,7 +7,7 @@ It inserts comparison results in corresponding html files
 
 """
 
-from os import fsync, path
+from os import fsync, rename, path
 from random import randint
 from shutil import copyfile, copy
 from typing import Any, List

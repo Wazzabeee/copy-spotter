@@ -11,9 +11,7 @@ import webbrowser
 from datetime import datetime
 from os import listdir, path
 from typing import List
-
 from tqdm import tqdm
-
 from scripts.html_writing import add_links_to_html_table, results_to_html, papers_comparison
 from scripts.html_utils import writing_results
 from scripts.processing_files import file_extension_call

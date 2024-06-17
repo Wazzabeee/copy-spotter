@@ -1,5 +1,5 @@
 # Copy Spotter
-
+![GIF demo](data/img/example.gif)
 ![PyPI - Version](https://img.shields.io/pypi/v/copy-spotter) ![PyPI - License](https://img.shields.io/pypi/l/copy-spotter)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 
@@ -16,6 +16,10 @@ This program will process pdf, txt, docx, and odt files that can be found in the
 $ pip install copy-spotter
 $ copy-spotter [-s] [-o] [-h] input_directory
 ```
+Usage: python -m scripts.main.py input_directory [OPTIONS]
+
+  Performs a similarity analysis of all text files available in given input directory.
+  Developed by Clément Delteil -> (Github: Wazzabeee)
 ***Positional Arguments:***
 * `input_directory`: One directory that contains all files (pdf, txt, docx, odt) (see `data/pdf/plagiarism` for example)
 
@@ -54,11 +58,29 @@ $ cd copy_spotter
 
 # Install requirements
 $ pip install -r requirements.txt
+
+# Run the app
+$ python -m scripts.main.py data/pdf/plagiarism -s 2
+```
+**First run**
+---
+On the first run you might get :
+- an ImportError from pdfminer library 
+``` 
+ImportError: cannot import name 'uint_value' from 'pdfminer.pdftypes' (C:/.../pdfminer/pdftypes.py)
+```
+To fix this, please uninstall pdfminer3k and pdfminer.six via 
+``` pip uninstall pdfminer3k ```
+``` pip uninstall pdfminer.six ```
+Then install them again via 
+``` pip install pdfminer3k ```
+``` pip install pdfminer.six ```
 $ pip install -r requirements_lint.txt
 
 # Install precommit
 $ pip install pre-commit
 $ pre-commit install
+
 
 # Run tests
 $ pip install pytest
@@ -78,6 +100,11 @@ $ python -m scripts.main [-s] [-o] [-h] input_directory
 
 **TODO**
 ---
+- Add more tests
+- Add info in console for timing (tqdm)
+- Add CSS to HTML Template
+- Add support for other folder structures
+- Fix Slate3k by installing custom fork
 - Add more tests on existing functions
 - Implement OCR with tesseract for scanned documents
 - Add custom naming option for pdf files
