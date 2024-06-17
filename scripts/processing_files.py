@@ -5,23 +5,22 @@ import zipfile
 from os import path
 
 import slate3k as slate
-from odf import text, teletype
-from odf.opendocument import load
 import pytesseract
 from pdf2image import convert_from_path
+from odf import text, teletype
+from odf.opendocument import load
+from pdfminer.high_level import extract_text
 
 
 def get_file_extension(filepath: str) -> str:
     """Return the file extension of the file at the specified path"""
     if not path.isfile(filepath):
-        print("Invalid file path")
-        return ""
+        raise ValueError(f"Invalid file path: {filepath}")
 
     try:
         return path.splitext(filepath)[1]
     except IndexError:
-        print("File extension error")
-        return ""
+        raise ValueError(f"File extension error for file: {filepath}")
 
 
 def file_extension_call(file: str) -> list:
@@ -29,44 +28,27 @@ def file_extension_call(file: str) -> list:
 
     extension = get_file_extension(file)
 
-    if extension:
-        if extension == ".pdf":
-            return get_words_from_pdf_file(file)
-        if extension == ".docx":
-            return get_words_from_docx_file(file)
-        if extension == ".odt":
-            return get_words_from_odt_file(file)
-        if extension == ".txt":
-            return get_words_from_txt_file(file)
-
-    print("File format is not supported. Please convert to pdf, docx, odt or txt")
-    return []
+    if extension == ".pdf":
+        return get_words_from_pdf_file(file)
+    elif extension == ".docx":
+        return get_words_from_docx_file(file)
+    elif extension == ".odt":
+        return get_words_from_odt_file(file)
+    elif extension == ".txt":
+        return get_words_from_txt_file(file)
+    else:
+        raise ValueError(f"File format not supported for file: {file}. " f"Please convert to pdf, docx, odt, or txt")
 
 
 def get_words_from_pdf_file(pdf_path: str) -> list:
-    """Return list of words from pdf file at specified path"""
+    """Return list of words from pdf file at specified path using pdfminer.six."""
 
-    with open(pdf_path, "rb") as file:
-        extracted_text = slate.PDF(file)
+    # Extract text from the PDF file using pdfminer
+    extracted_text = extract_text(pdf_path)
 
-    nested_lists_length_sum = sum(len(temp) for temp in extracted_text)
-    count_line_return = sum(string.count("\n") for string in extracted_text)
-
-    # Check \n ratio compared to length of text
-    if (count_line_return > 0) and (nested_lists_length_sum / count_line_return > 10):
-        for i, _ in enumerate(extracted_text):
-            extracted_text[i] = extracted_text[i].replace("\n", " ")
-            extracted_text[i] = re.sub("<(.|\n)*?>", "", str(extracted_text[i]))
-            extracted_text[i] = re.findall(r"\w+", extracted_text[i].lower())
-
-        return [item for sublist in extracted_text for item in sublist]
-
-    # Pdf format is not readable by Slate library
-    return get_words_from_special_pdf(pdf_path)
-
-
-def get_words_from_special_pdf(pdf_path: str) -> list:
-    """Return list of words from a PDF file when the Slate library can't scrape it"""
+    # Clean up the extracted text
+    cleaned_text = re.sub(r"\s+", " ", extracted_text)
+    cleaned_text = re.sub(r"<(.|\n)*?>", "", cleaned_text)
 
     # Convert the pdfs into images
     pages = convert_from_path(pdf_path, 300)
