@@ -13,6 +13,10 @@
   passages that were moved around, which difflib missed. It does not skip frequent words, and on 20 generated
   documents of 5000 words it runs about twice as fast as difflib.
 - New option `--engine {shingle,difflib}`. `--engine difflib` gives the same results as before.
+- Comparison pages show each document's original text, with its case, punctuation and paragraph breaks, and the
+  matching passages highlighted in place. Lines that a PDF breaks in the middle of a paragraph are joined. Matching
+  and scores are unchanged.
+- New `extract_document()` returns the display text, the words and the position of each word in the text.
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at

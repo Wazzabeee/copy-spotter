@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from html import escape
 from importlib.resources import files
 from pathlib import Path
 
+from copy_spotter.extract import Document
 from copy_spotter.similarity import Match
 
 RESULTS_FILENAME = "_results.html"
@@ -68,22 +69,28 @@ def block_color(index: int) -> str:
     return f"hsl({hue:.0f}, 75%, 35%)"
 
 
-def highlight(words: Sequence[str], spans: Sequence[tuple[int, int, int]]) -> str:
-    """Return the words as HTML, wrapping each ``(start, size, color_index)`` span in a colored tag.
+def highlight(document: Document, spans: Iterable[tuple[int, int, int]]) -> str:
+    """Return the document's text as HTML, wrapping each ``(start, size, color_index)`` word range in a colored tag.
 
-    ``spans`` must be sorted by start and not overlap.
+    Each range covers words ``[start, start + size)`` and is shown from the first word's first character to the
+    last word's last character. Ranges may come in any order; a range overlapping an earlier one is trimmed.
     """
+    text = document.text
     parts: list[str] = []
-    cursor = 0
-    for start, size, color_index in spans:
-        if start > cursor:
-            parts.append(escape(" ".join(words[cursor:start])))
-        matched = escape(" ".join(words[start : start + size]))
+    cursor = 0  # characters already written
+    next_word = 0  # first word not highlighted yet
+    for start, size, color_index in sorted(spans):
+        first, stop = max(start, next_word), start + size
+        if first >= stop:
+            continue
+        begin, end = document.spans[first][0], document.spans[stop - 1][1]
+        next_word = stop
+        parts.append(escape(text[cursor:begin]))
+        matched = escape(text[begin:end])
         parts.append(f'<span class="match" style="color: {block_color(color_index)}">{matched}</span>')
-        cursor = start + size
-    if cursor < len(words):
-        parts.append(escape(" ".join(words[cursor:])))
-    return " ".join(parts)
+        cursor = end
+    parts.append(escape(text[cursor:]))
+    return "".join(parts)
 
 
 def _score_span(score: float) -> str:
@@ -92,13 +99,13 @@ def _score_span(score: float) -> str:
 
 def render_comparison(
     names: tuple[str, str],
-    words: tuple[Sequence[str], Sequence[str]],
+    documents: tuple[Document, Document],
     pair: PairResult,
     score_mode: str = "coverage",
 ) -> str:
     """Return the side-by-side HTML page for one pair of documents."""
-    left = highlight(words[0], sorted((m.a, m.size, k) for k, m in enumerate(pair.blocks)))
-    right = highlight(words[1], sorted((m.b, m.size, k) for k, m in enumerate(pair.blocks)))
+    left = highlight(documents[0], [(m.a, m.size, k) for k, m in enumerate(pair.blocks)])
+    right = highlight(documents[1], [(m.b, m.size, k) for k, m in enumerate(pair.blocks)])
     return _render(
         _template("comparison.html"),
         title=escape(f"{names[0]} vs {names[1]}"),
@@ -181,7 +188,7 @@ def render_results(
 def write_report(
     out_dir: Path,
     names: Sequence[str],
-    words: Sequence[Sequence[str]],
+    documents: Sequence[Document],
     pairs: Sequence[PairResult],
     meta: str = "",
     *,
@@ -190,7 +197,9 @@ def write_report(
     """Write the summary page and every comparison page into ``out_dir``; return the summary path."""
     out_dir.mkdir(parents=True, exist_ok=True)
     for pair in pairs:
-        page = render_comparison((names[pair.i], names[pair.j]), (words[pair.i], words[pair.j]), pair, score_mode)
+        page = render_comparison(
+            (names[pair.i], names[pair.j]), (documents[pair.i], documents[pair.j]), pair, score_mode
+        )
         (out_dir / pair.filename).write_text(page, encoding="utf-8")
     results = out_dir / RESULTS_FILENAME
     results.write_text(render_results(names, pairs, meta, score_mode=score_mode), encoding="utf-8")
