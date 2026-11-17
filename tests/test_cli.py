@@ -132,3 +132,16 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["--version"])
     assert __version__ in capsys.readouterr().out
+
+
+def test_engine_option() -> None:
+    assert parse_args(["in"]).engine == "shingle"
+    assert parse_args(["in", "--engine", "difflib"]).engine == "difflib"
+    with pytest.raises(SystemExit):
+        parse_args(["in", "--engine", "unknown"])
+
+
+def test_full_run_with_difflib_engine(plagiarism_dir: Path, tmp_path: Path) -> None:
+    out_dir = tmp_path / "out"
+    assert main([str(plagiarism_dir), "-o", str(out_dir), "--engine", "difflib", "--no-open"]) == 0
+    assert "difflib engine" in (out_dir / "_results.html").read_text()

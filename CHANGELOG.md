@@ -7,8 +7,17 @@
   each document found in the other. A short text fully copied into a long document scores 100% in that direction.
 - The similarity matrix is no longer symmetric: the cell at row A, column B is the percentage of A found in B.
 - The pairs list shows both directions and is sorted by the higher one; comparison pages show both directions.
-- New `--score {coverage,ratio}` option. `coverage` is the default; `ratio` restores the previous symmetric `difflib`
-  score everywhere.
+- New `--score {coverage,ratio}` option. `coverage` is the default; `ratio` shows the symmetric similarity ratio of
+  the pair everywhere, as before.
+- New default matching engine, `shingle`: indexes word n-grams and finds copied passages in any order, including
+  passages that were moved around, which difflib missed. It does not skip frequent words, and on 20 generated
+  documents of 5000 words it runs about twice as fast as difflib.
+- New option `--engine {shingle,difflib}`. `--engine difflib` gives the same results as before.
+
+### Changes
+- With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at
+  least 2), and passages moved around count too, so scores differ from previous versions. The ratio decreases when
+  the block size grows. Use `--engine difflib` for the previous results.
 
 ## 0.2.0 (unreleased)
 

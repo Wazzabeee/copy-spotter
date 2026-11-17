@@ -32,7 +32,8 @@ Python 3.10 or newer is required.
 ## Usage
 
 ```bash
-copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [-r] [--no-open] [-V] in_dir
+copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}] [-r]
+             [--no-open] [-V] in_dir
 ```
 
 | Argument | Description |
@@ -40,7 +41,8 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [-r] [
 | `in_dir` | Directory containing the documents to compare (pdf, docx, odt, txt). |
 | `-o`, `--out-dir` | Directory for the HTML results. Created if missing. Default: `./results/<timestamp>`. |
 | `-s`, `--block-size` | Minimum number of consecutive identical words to highlight. Default: 2. |
-| `--score` | `coverage` (default): percentage of each document found in the other, so a short text fully copied into a long one scores 100% in that direction. `ratio`: the symmetric difflib similarity of the pair. |
+| `--score` | `coverage` (default): percentage of each document found in the other, so a short text fully copied into a long one scores 100% in that direction. `ratio`: the symmetric similarity ratio of the pair. |
+| `--engine` | Matching algorithm: `shingle` (default) finds copied passages in any order, `difflib` is the legacy in-order matcher. |
 | `-r`, `--recursive` | Also look for documents in subdirectories. |
 | `--no-open` | Do not open the results in a web browser. |
 | `-V`, `--version` | Show the version and exit. |
@@ -62,18 +64,27 @@ The results directory is self-contained: open `_results.html`, or zip the folder
 ## How it works
 
 1. Text is extracted from each document and split into lowercase words.
-2. Each pair of documents is compared with Python's `difflib.SequenceMatcher`, which finds the runs of identical
-   consecutive words. Runs shorter than `--block-size` words are ignored.
+2. Each pair of documents is compared with the shingle engine: the word n-grams of one document are indexed (n is
+   `--block-size`, at least 2), every n-gram shared with the other document is extended into the longest run of
+   identical words, and runs are kept longest first so that no word is matched twice. Copied passages are found even
+   when they were moved around. Runs shorter than `--block-size` words are ignored.
 3. By default each pair gets two scores: the percentage of the words of A that are inside a matching run (A found in
    B), and the same for B. In the matrix, the cell at row A, column B is the percentage of A found in B. With
-   `--score ratio`, the score is the symmetric `difflib` ratio of the pair instead.
+   `--score ratio`, the score is the symmetric ratio of the pair instead, `2 * matched words / total words * 100`.
+   With the shingle engine only runs of at least `--block-size` words count, so a larger block size gives a lower
+   ratio.
 4. The matching runs are highlighted in the side by side view.
+
+`--engine difflib` keeps the previous matching, based on Python's `difflib.SequenceMatcher`: it follows a single
+in-order alignment (a passage moved elsewhere is missed), ignores words that are very frequent in texts over 200 words,
+and its ratio also counts isolated shared words.
 
 ### Known limitations
 
 - Only exact word matches are detected: paraphrased or translated passages are not.
 - With `--score ratio`, the score is diluted when documents have very different lengths (a short text fully copied
   into a long one gets a low score). The default coverage score does not have this problem.
+- The shingle engine ignores matches shorter than two words, so documents of a single word never match.
 - Scanned PDFs need OCR before they can be compared.
 - The side by side view shows the extracted words, without the original formatting or punctuation.
 

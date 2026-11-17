@@ -13,7 +13,7 @@ from copy_spotter.report import (
     score_style,
     write_report,
 )
-from copy_spotter.similarity import compare, coverage
+from copy_spotter.similarity import Match, compare, coverage
 
 
 def _highlighted(html: str) -> list[str]:
@@ -147,3 +147,15 @@ def test_score_colors_follow_the_displayed_score() -> None:
     assert f'style="{score_style(1.0)}">1<' in html
     ratio = render_results(["a", "b"], [pair], score_mode="ratio")
     assert f'style="{score_style(18.182)}">18.182<' in ratio
+
+
+def test_blocks_out_of_order_on_the_right_side_are_highlighted() -> None:
+    words1 = "alpha beta gamma delta".split()
+    words2 = "gamma delta alpha beta".split()
+    pair = PairResult(0, 1, 100.0, [Match(0, 2, 2), Match(2, 0, 2)], 100.0, 100.0)
+    html = render_comparison(("a", "b"), (words1, words2), pair)
+    assert _highlighted(html) == ["alpha beta", "gamma delta", "gamma delta", "alpha beta"]
+    # Each block keeps its color on both sides.
+    colors = re.findall(r'style="color: (hsl[^"]+)">([^<]+)</span>', html)
+    assert dict(colors[:2]) == {block_color(0): "alpha beta", block_color(1): "gamma delta"}
+    assert dict(colors[2:]) == {block_color(1): "gamma delta", block_color(0): "alpha beta"}

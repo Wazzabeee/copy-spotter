@@ -97,8 +97,8 @@ def render_comparison(
     score_mode: str = "coverage",
 ) -> str:
     """Return the side-by-side HTML page for one pair of documents."""
-    left = highlight(words[0], [(m.a, m.size, k) for k, m in enumerate(pair.blocks)])
-    right = highlight(words[1], [(m.b, m.size, k) for k, m in enumerate(pair.blocks)])
+    left = highlight(words[0], sorted((m.a, m.size, k) for k, m in enumerate(pair.blocks)))
+    right = highlight(words[1], sorted((m.b, m.size, k) for k, m in enumerate(pair.blocks)))
     return _render(
         _template("comparison.html"),
         title=escape(f"{names[0]} vs {names[1]}"),
