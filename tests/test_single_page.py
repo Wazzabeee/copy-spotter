@@ -4,10 +4,10 @@ import json
 import re
 from pathlib import Path
 
+from copy_spotter._report import RESULTS_FILENAME, PairResult
+from copy_spotter._single_page import render_single, report_data, script_json, write_single_report
 from copy_spotter.extract import Document, tokenize_with_offsets
-from copy_spotter.report import RESULTS_FILENAME, PairResult
 from copy_spotter.similarity import compare, coverage
-from copy_spotter.single_page import render_single, report_data, script_json, write_single_report
 
 _DATA_RE = re.compile(r'<script type="application/json" id="report-data">(.*?)</script>', re.DOTALL)
 

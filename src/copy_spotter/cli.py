@@ -13,11 +13,11 @@ from pathlib import Path
 from tqdm import tqdm
 
 from copy_spotter import __version__
-from copy_spotter.export import write_csv, write_json
+from copy_spotter._export import write_csv, write_json
+from copy_spotter._report import DEFAULT_THRESHOLDS, SCORE_MODES, PairResult, write_report
+from copy_spotter._single_page import write_single_report
 from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_document, is_supported
-from copy_spotter.report import DEFAULT_THRESHOLDS, SCORE_MODES, PairResult, write_report
 from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, compare, coverage
-from copy_spotter.single_page import write_single_report
 
 
 class CopySpotterError(Exception):

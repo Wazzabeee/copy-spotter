@@ -7,8 +7,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from copy_spotter._report import DEFAULT_THRESHOLDS, RESULTS_FILENAME, PairResult, _render, _template
 from copy_spotter.extract import Document
-from copy_spotter.report import DEFAULT_THRESHOLDS, RESULTS_FILENAME, PairResult, _render, _template
 
 DATA_VERSION = 1
 
