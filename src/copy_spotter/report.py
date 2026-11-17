@@ -53,9 +53,12 @@ def _render(template: str, **values: str) -> str:
     return _PLACEHOLDER_RE.sub(lambda m: values[m.group(1)], template)
 
 
-def score_style(score: float) -> str:
-    """Return the CSS for a similarity score: the higher, the more alarming."""
-    low, medium, high = DEFAULT_THRESHOLDS
+def score_style(score: float, thresholds: Sequence[float] = DEFAULT_THRESHOLDS) -> str:
+    """Return the CSS for a similarity score: the higher, the more alarming.
+
+    ``thresholds`` are three increasing percentages: above each one the score gets a more alarming color.
+    """
+    low, medium, high = thresholds
     if score > high:
         return "color: #990033; font-weight: bold"
     if score > medium:
@@ -95,8 +98,8 @@ def highlight(document: Document, spans: Iterable[tuple[int, int, int]]) -> str:
     return "".join(parts)
 
 
-def _score_span(score: float) -> str:
-    return f'<span style="{score_style(score)}">{score:g}%</span>'
+def _score_span(score: float, thresholds: Sequence[float]) -> str:
+    return f'<span style="{score_style(score, thresholds)}">{score:g}%</span>'
 
 
 def render_comparison(
@@ -104,6 +107,8 @@ def render_comparison(
     documents: tuple[Document, Document],
     pair: PairResult,
     score_mode: str = "coverage",
+    *,
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> str:
     """Return the side-by-side HTML page for one pair of documents."""
     left = highlight(documents[0], [(m.a, m.size, k) for k, m in enumerate(pair.blocks)])
@@ -111,7 +116,7 @@ def render_comparison(
     return _render(
         _template("comparison.html"),
         title=escape(f"{names[0]} vs {names[1]}"),
-        score=_comparison_score(names, pair, score_mode),
+        score=_comparison_score(names, pair, score_mode, thresholds),
         left_name=escape(names[0]),
         right_name=escape(names[1]),
         left=left,
@@ -119,23 +124,28 @@ def render_comparison(
     )
 
 
-def _comparison_score(names: tuple[str, str], pair: PairResult, score_mode: str) -> str:
+def _comparison_score(names: tuple[str, str], pair: PairResult, score_mode: str, thresholds: Sequence[float]) -> str:
     left_in_right, right_in_left = pair.scores(score_mode)
     if score_mode == "ratio":
-        return f"Similarity: {_score_span(left_in_right)}"
+        return f"Similarity: {_score_span(left_in_right, thresholds)}"
     left, right = escape(names[0]), escape(names[1])
     return (
-        f"{left} found in {right}: {_score_span(left_in_right)}"
-        f" &middot; {right} found in {left}: {_score_span(right_in_left)}"
+        f"{left} found in {right}: {_score_span(left_in_right, thresholds)}"
+        f" &middot; {right} found in {left}: {_score_span(right_in_left, thresholds)}"
     )
 
 
-def _score_link(pair: PairResult, score: float) -> str:
-    return f'<a href="{pair.filename}" style="{score_style(score)}">{score:g}</a>'
+def _score_link(pair: PairResult, score: float, thresholds: Sequence[float]) -> str:
+    return f'<a href="{pair.filename}" style="{score_style(score, thresholds)}">{score:g}</a>'
 
 
 def render_results(
-    names: Sequence[str], pairs: Sequence[PairResult], meta: str = "", score_mode: str = "coverage"
+    names: Sequence[str],
+    pairs: Sequence[PairResult],
+    meta: str = "",
+    score_mode: str = "coverage",
+    *,
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> str:
     """Return the summary page: pairs sorted by similarity, then the full matrix.
 
@@ -161,7 +171,7 @@ def render_results(
     pair_rows = []
     for p in sorted(pairs, key=lambda p: max(p.scores(score_mode)), reverse=True):
         shown = p.scores(score_mode)[:1] if score_mode == "ratio" else p.scores(score_mode)
-        links = "".join(f"<td>{_score_link(p, s)}</td>" for s in shown)
+        links = "".join(f"<td>{_score_link(p, s, thresholds)}</td>" for s in shown)
         pair_rows.append(
             f'<tr>{links}<td class="name">{escape(names[p.i])}</td><td class="name">{escape(names[p.j])}</td></tr>'
         )
@@ -174,7 +184,7 @@ def render_results(
             if i == j:
                 cells.append('<td class="self">-</td>')
             else:
-                cells.append(f"<td>{_score_link(*by_cell[i, j])}</td>")
+                cells.append(f"<td>{_score_link(*by_cell[i, j], thresholds)}</td>")
         matrix_rows.append(f'<tr><th class="name" title="{escape(name)}">{escape(name)}</th>{"".join(cells)}</tr>')
 
     return _render(
@@ -195,14 +205,19 @@ def write_report(
     meta: str = "",
     *,
     score_mode: str = "coverage",
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> Path:
     """Write the summary page and every comparison page into ``out_dir``; return the summary path."""
     out_dir.mkdir(parents=True, exist_ok=True)
     for pair in pairs:
         page = render_comparison(
-            (names[pair.i], names[pair.j]), (documents[pair.i], documents[pair.j]), pair, score_mode
+            (names[pair.i], names[pair.j]),
+            (documents[pair.i], documents[pair.j]),
+            pair,
+            score_mode,
+            thresholds=thresholds,
         )
         (out_dir / pair.filename).write_text(page, encoding="utf-8")
     results = out_dir / RESULTS_FILENAME
-    results.write_text(render_results(names, pairs, meta, score_mode=score_mode), encoding="utf-8")
+    results.write_text(render_results(names, pairs, meta, score_mode, thresholds=thresholds), encoding="utf-8")
     return results

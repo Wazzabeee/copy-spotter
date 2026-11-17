@@ -33,7 +33,8 @@ Python 3.10 or newer is required.
 
 ```bash
 copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}]
-             [--report {single,pages}] [--json PATH] [--csv PATH] [-r] [--no-open] [-V] in_dir
+             [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
+             [--no-open] [-V] in_dir
 ```
 
 | Argument | Description |
@@ -46,6 +47,7 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `--report` | `single` (default): one self-contained `_results.html` file. `pages`: `_results.html` plus one page per pair. |
 | `--json PATH` | Also write the pairs, scores and matching blocks as JSON. |
 | `--csv PATH` | Also write one CSV row per pair. |
+| `--thresholds` | Score percentages above which scores are shown in yellow, orange and red, applied to the score chosen by `--score`: three increasing numbers between 0 and 100. Default: `5,10,15`. |
 | `-r`, `--recursive` | Also look for documents in subdirectories. |
 | `--no-open` | Do not open the results in a web browser. |
 | `-V`, `--version` | Show the version and exit. |
@@ -71,10 +73,10 @@ With `--report pages` the results directory holds `_results.html` plus one HTML 
 `--json` and `--csv` write the results in a form other tools can read, with pairs sorted by their highest score in
 the `--score` mode, highest first. Field names are stable; new fields may be added later.
 
-- JSON: `version`, `copy_spotter_version`, `engine`, `score_mode`, `block_size`, `documents` (`index`, `name`,
-  `word_count`) and `pairs` (`document_1`, `document_2`, `index_1`, `index_2`, `coverage_1`, `coverage_2`, `ratio`,
-  `matched_words`, and `blocks` with `start_1`, `start_2`, `size`). `coverage_1` is the % of document 1 found in
-  document 2. Block positions count extracted words from 0.
+- JSON: `version`, `copy_spotter_version`, `engine`, `score_mode`, `block_size`, `thresholds`, `documents`
+  (`index`, `name`, `word_count`) and `pairs` (`document_1`, `document_2`, `index_1`, `index_2`, `coverage_1`,
+  `coverage_2`, `ratio`, `matched_words`, and `blocks` with `start_1`, `start_2`, `size`). `coverage_1` is the % of
+  document 1 found in document 2. Block positions count extracted words from 0.
 - CSV columns: `document_1`, `document_2`, `coverage_1`, `coverage_2`, `ratio`, `matched_words`, `block_count`.
 
 ```bash

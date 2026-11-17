@@ -15,13 +15,27 @@ from tqdm import tqdm
 from copy_spotter import __version__
 from copy_spotter.export import write_csv, write_json
 from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_document, is_supported
-from copy_spotter.report import SCORE_MODES, PairResult, write_report
+from copy_spotter.report import DEFAULT_THRESHOLDS, SCORE_MODES, PairResult, write_report
 from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, compare, coverage
 from copy_spotter.single_page import write_single_report
 
 
 class CopySpotterError(Exception):
     """Error shown to the user without a traceback."""
+
+
+def parse_thresholds(text: str) -> tuple[float, float, float]:
+    """Parse ``"5,10,15"`` into three increasing percentages between 0 and 100."""
+    try:
+        values = tuple(float(part) for part in text.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected three numbers such as 5,10,15, got {text!r}") from None
+    if len(values) != 3:
+        raise argparse.ArgumentTypeError(f"expected three numbers such as 5,10,15, got {len(values)}")
+    low, medium, high = values
+    if not 0 <= low < medium < high <= 100:
+        raise argparse.ArgumentTypeError(f"thresholds must be increasing percentages between 0 and 100, got {text!r}")
+    return low, medium, high
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -72,6 +86,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--json", dest="json_path", type=Path, metavar="PATH", help="also write the pairs and matching blocks as JSON"
     )
     parser.add_argument("--csv", dest="csv_path", type=Path, metavar="PATH", help="also write one CSV row per pair")
+    parser.add_argument(
+        "--thresholds",
+        type=parse_thresholds,
+        default=DEFAULT_THRESHOLDS,
+        metavar="LOW,MEDIUM,HIGH",
+        help="score percentages above which scores are shown in yellow, orange and red (default: 5,10,15)",
+    )
     parser.add_argument("-r", "--recursive", action="store_true", help="also look for documents in subdirectories")
     parser.add_argument("--no-open", action="store_true", help="do not open the results in a web browser")
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
@@ -143,13 +164,16 @@ def run(args: argparse.Namespace) -> Path:
             block_size=args.block_size,
             engine=args.engine,
             score_mode=args.score,
+            thresholds=args.thresholds,
         )
         print(f"JSON saved at: {json_path}")
     if args.csv_path is not None:
         print(f"CSV saved at: {write_csv(args.csv_path.resolve(), names, pairs, score_mode=args.score)}")
     if args.report == "pages":
-        return write_report(out_dir, names, documents, pairs, meta, score_mode=args.score)
-    return write_single_report(out_dir, names, documents, pairs, meta, score_mode=args.score)
+        return write_report(out_dir, names, documents, pairs, meta, score_mode=args.score, thresholds=args.thresholds)
+    return write_single_report(
+        out_dir, names, documents, pairs, meta, score_mode=args.score, thresholds=args.thresholds
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

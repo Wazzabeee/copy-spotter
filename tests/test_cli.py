@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from copy_spotter import __version__
-from copy_spotter.cli import main, parse_args
+from copy_spotter.cli import main, parse_args, parse_thresholds
 
 
 def _copy_samples(src: Path, dst: Path) -> Path:
@@ -158,6 +158,39 @@ def test_single_page_carries_both_scores(tmp_path: Path) -> None:
         assert data["score_mode"] == mode
         pair = data["pairs"][0]
         assert (pair["coverage_i"], pair["coverage_j"], pair["ratio"]) == (100.0, 10.0, 18.182)
+
+
+def test_thresholds_default_and_parsing() -> None:
+    assert parse_args(["in"]).thresholds == (5.0, 10.0, 15.0)
+    assert parse_args(["in", "--thresholds", "20,40.5,60"]).thresholds == (20.0, 40.5, 60.0)
+    assert parse_thresholds(" 0, 1 ,100") == (0.0, 1.0, 100.0)
+
+
+@pytest.mark.parametrize(
+    "value", ["5,10", "5,10,15,20", "a,b,c", "", "10,5,15", "5,5,15", "-1,5,15", "5,10,101", "nan,1,2"]
+)
+def test_invalid_thresholds(value: str, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["in", "--thresholds", value])
+    assert "--thresholds" in capsys.readouterr().err
+
+
+def test_thresholds_reach_every_output(tmp_path: Path) -> None:
+    _write_short_and_long(tmp_path / "in")
+    # Coverage scores are 100 and 10: with 20,50,90 they are red and green.
+    common = [str(tmp_path / "in"), "--thresholds", "20,50,90", "--no-open"]
+    json_path = tmp_path / "pairs.json"
+    assert main([*common, "-o", str(tmp_path / "single"), "--json", str(json_path)]) == 0
+    assert _embedded((tmp_path / "single" / "_results.html").read_text())["thresholds"] == [20.0, 50.0, 90.0]
+    assert json.loads(json_path.read_text())["thresholds"] == [20.0, 50.0, 90.0]
+    assert main([*common, "-o", str(tmp_path / "pages"), "--report", "pages"]) == 0
+    results = (tmp_path / "pages" / "_results.html").read_text()
+    assert 'style="color: #990033; font-weight: bold">100<' in results
+    assert 'style="color: green">10<' in results
+    # The thresholds apply to whichever score is shown: the ratio (18.182) is yellow with 10,20,30.
+    ratio = [str(tmp_path / "in"), "--thresholds", "10,20,30", "--score", "ratio", "--report", "pages", "--no-open"]
+    assert main([*ratio, "-o", str(tmp_path / "ratio")]) == 0
+    assert 'style="color: #b38f00">18.182%<' in (tmp_path / "ratio" / "0_1.html").read_text()
 
 
 def test_invalid_report() -> None:

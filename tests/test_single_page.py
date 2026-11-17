@@ -99,3 +99,9 @@ def test_write_single_report(tmp_path: Path) -> None:
     assert path == out_dir / RESULTS_FILENAME
     assert [p.name for p in out_dir.iterdir()] == [RESULTS_FILENAME]
     assert _embedded(path.read_text(encoding="utf-8"))["score_mode"] == "ratio"
+
+
+def test_thresholds_are_embedded() -> None:
+    pairs = [PairResult(0, 1, 0.0, [], 0.0, 0.0)]
+    html = render_single(["a", "b"], [_doc("x"), _doc("y")], pairs, thresholds=(1, 2, 3))
+    assert _embedded(html)["thresholds"] == [1, 2, 3]

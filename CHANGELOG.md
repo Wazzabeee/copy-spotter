@@ -22,6 +22,8 @@
   original text. `--report pages` keeps the multi-page output: a summary page plus one page per pair.
 - `--json PATH` and `--csv PATH` export the pairs sorted by score: names, both coverages, the ratio and the matching
   blocks in JSON, with the engine and score mode of the run; one row per pair in CSV.
+- `--thresholds LOW,MEDIUM,HIGH` sets the percentages at which the shown score (coverage or ratio) turns yellow,
+  orange and red (default `5,10,15`, previously hardcoded).
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at
