@@ -48,6 +48,11 @@
             overflow-wrap: anywhere;
         }
 
+        .text {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
         .match {
             font-weight: bold;
         }
@@ -78,8 +83,8 @@
         <span class="score">{{score}}</span>
     </header>
     <div class="container">
-        <div class="content" id="leftContent"><h3>{{left_name}}</h3>{{left}}</div>
-        <div class="content" id="rightContent"><h3>{{right_name}}</h3>{{right}}</div>
+        <div class="content" id="leftContent"><h3>{{left_name}}</h3><div class="text">{{left}}</div></div>
+        <div class="content" id="rightContent"><h3>{{right_name}}</h3><div class="text">{{right}}</div></div>
     </div>
 </body>
 </html>

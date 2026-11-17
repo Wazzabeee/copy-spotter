@@ -86,7 +86,8 @@ and its ratio also counts isolated shared words.
   into a long one gets a low score). The default coverage score does not have this problem.
 - The shingle engine ignores matches shorter than two words, so documents of a single word never match.
 - Scanned PDFs need OCR before they can be compared.
-- The side by side view shows the extracted words, without the original formatting or punctuation.
+- The side by side view shows the extracted plain text (case, punctuation and paragraphs), not the original layout:
+  fonts, tables and images are not rendered, and some PDFs may still show odd line breaks.
 
 ## Development
 

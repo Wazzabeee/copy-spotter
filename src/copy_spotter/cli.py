@@ -13,7 +13,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from copy_spotter import __version__
-from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_words, is_supported
+from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_document, is_supported
 from copy_spotter.report import SCORE_MODES, PairResult, write_report
 from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, compare, coverage
 
@@ -91,19 +91,20 @@ def run(args: argparse.Namespace) -> Path:
     out_dir: Path = (args.out_dir or Path("results") / datetime.now().strftime("%Y%m%d_%H%M%S")).resolve()
 
     paths = find_documents(in_dir, args.recursive, exclude=out_dir)
-    names, texts = [], []
+    names, texts, documents = [], [], []
     for path in tqdm(paths, desc="Reading files", disable=None):
         name = path.relative_to(in_dir).as_posix()
         try:
-            words = extract_words(path)
+            document = extract_document(path)
         except Exception as exc:  # a corrupt file should not stop the whole run
             print(f"Warning: skipping {name}: could not read it ({exc})", file=sys.stderr)
             continue
-        if not words:
+        if not document.words:
             print(f"Warning: skipping {name}: no text found (empty file or scanned PDF?)", file=sys.stderr)
             continue
         names.append(name)
-        texts.append(words)
+        texts.append(document.words)
+        documents.append(document)
 
     if len(texts) < 2:
         raise CopySpotterError(
@@ -121,7 +122,7 @@ def run(args: argparse.Namespace) -> Path:
         f"{len(names)} documents from {in_dir.name}/, minimum block size {args.block_size}, "
         f"{args.engine} engine, {args.score} score, copy-spotter {__version__}"
     )
-    return write_report(out_dir, names, texts, pairs, meta, score_mode=args.score)
+    return write_report(out_dir, names, documents, pairs, meta, score_mode=args.score)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
