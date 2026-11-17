@@ -11,6 +11,7 @@ from typing import Literal, NamedTuple, get_args
 Engine = Literal["shingle", "difflib"]
 ENGINES: tuple[Engine, ...] = get_args(Engine)
 DEFAULT_ENGINE: Engine = "shingle"
+_MAX_SEED_OCCURRENCES = 64  # n-grams more frequent than this in a document do not seed runs
 
 
 class Match(NamedTuple):
@@ -101,13 +102,19 @@ def _run_length(seq1: list[int], seq2: list[int], i: int, j: int, k: int) -> int
 
 
 def _maximal_runs(seq1: list[int], seq2: list[int], n: int) -> list[tuple[int, int, int]]:
-    """Return every maximal run ``(-size, a, b)`` of at least ``n`` identical items."""
+    """Return the maximal runs ``(-size, a, b)`` of at least ``n`` items whose first n-gram is not too frequent."""
     # n-gram -> word before it (-1 at the start) -> positions in seq2. Grouping by the previous word
     # skips runs that are not maximal without looking at them, which keeps repetitive texts fast.
     index: dict[tuple[int, ...], dict[int, list[int]]] = {}
+    counts: dict[tuple[int, ...], int] = {}
     for j in range(len(seq2) - n + 1):
+        key = tuple(seq2[j : j + n])
         before = seq2[j - 1] if j else -1
-        index.setdefault(tuple(seq2[j : j + n]), {}).setdefault(before, []).append(j)
+        index.setdefault(key, {}).setdefault(before, []).append(j)
+        counts[key] = counts.get(key, 0) + 1
+    for key, count in counts.items():
+        if count > _MAX_SEED_OCCURRENCES:
+            del index[key]  # would make the number of runs quadratic: left to _tile_exact
 
     len1, len2 = len(seq1), len(seq2)
     runs: list[tuple[int, int, int]] = []
@@ -130,10 +137,20 @@ def _maximal_runs(seq1: list[int], seq2: list[int], n: int) -> list[tuple[int, i
 
 def _tile(seq1: list[int], seq2: list[int], n: int) -> list[Match]:
     """Pick non-overlapping runs of at least ``n`` items, longest first."""
-    heap = _maximal_runs(seq1, seq2, n)
-    heapq.heapify(heap)
     used1 = bytearray(len(seq1))
     used2 = bytearray(len(seq2))
+    # Repetitive text can have a quadratic number of runs, so the heap only gets runs longer than n
+    # seeded by n+1-grams that are not too frequent. A linear scan then matches every free n-gram left.
+    blocks = _tile_longest_first(seq1, seq2, n + 1, used1, used2)
+    blocks += _tile_exact(seq1, seq2, n, used1, used2)
+    blocks.sort()
+    return blocks
+
+
+def _tile_longest_first(seq1: list[int], seq2: list[int], n: int, used1: bytearray, used2: bytearray) -> list[Match]:
+    """Pick non-overlapping runs of at least ``n`` items, longest first, and mark them as used."""
+    heap = _maximal_runs(seq1, seq2, n)
+    heapq.heapify(heap)
     free_run = re.compile(rb"\x00{%d,}" % n)
     blocks = []
     while heap:
@@ -155,7 +172,41 @@ def _tile(seq1: list[int], seq2: list[int], n: int) -> list[Match]:
         for free in free_run.finditer(both):
             start, end = free.span()
             heapq.heappush(heap, (start - end, a + start, b + start))
-    blocks.sort()
+    return blocks
+
+
+def _tile_exact(seq1: list[int], seq2: list[int], n: int, used1: bytearray, used2: bytearray) -> list[Match]:
+    """Match each free n-gram of ``seq1``, in order, to its first free occurrence in ``seq2``, then extend it."""
+    index: dict[tuple[int, ...], list[int]] = {}
+    for j in range(len(seq2) - n + 1):
+        if 1 not in used2[j : j + n]:
+            index.setdefault(tuple(seq2[j : j + n]), []).append(j)
+    cursor = dict.fromkeys(index, 0)  # positions before the cursor are used for good: never look at them again
+    blocks = []
+    for i in range(len(seq1) - n + 1):
+        key = tuple(seq1[i : i + n])
+        positions = index.get(key)
+        if positions is None or 1 in used1[i : i + n]:
+            continue
+        k = cursor[key]
+        while k < len(positions) and 1 in used2[positions[k] : positions[k] + n]:
+            k += 1
+        if k < len(positions):
+            j = positions[k]
+            size = n
+            while (
+                i + size < len(seq1)
+                and j + size < len(seq2)
+                and seq1[i + size] == seq2[j + size]
+                and not used1[i + size]
+                and not used2[j + size]
+            ):
+                size += 1
+            blocks.append(Match(i, j, size))
+            used1[i : i + size] = b"\x01" * size
+            used2[j : j + size] = b"\x01" * size
+            k += 1
+        cursor[key] = k
     return blocks
 
 

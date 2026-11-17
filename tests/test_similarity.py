@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from copy_spotter import similarity
 from copy_spotter.extract import extract_words
 from copy_spotter.similarity import ENGINES, Engine, Match, compare, coverage, difflib_overlap
 
@@ -150,8 +151,12 @@ def _common_free_run(words1: list[str], words2: list[str], used1: set[int], used
     return False
 
 
+@pytest.mark.parametrize("max_seed", [64, 1])  # 1: frequent n-grams are left to the final linear scan
 @pytest.mark.parametrize("seed", range(40))
-def test_shingle_blocks_are_correct_disjoint_and_complete(seed: int) -> None:
+def test_shingle_blocks_are_correct_disjoint_and_complete(
+    seed: int, max_seed: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(similarity, "_MAX_SEED_OCCURRENCES", max_seed)
     rng = random.Random(seed)
     vocabulary = [f"w{k}" for k in range(rng.randint(2, 6))]
     words1 = rng.choices(vocabulary, k=rng.randint(0, 60))
@@ -177,9 +182,20 @@ def test_shingle_blocks_are_correct_disjoint_and_complete(seed: int) -> None:
     assert comparison.blocks == sorted(comparison.blocks)
 
 
-def test_shingle_handles_repetitive_text_quickly() -> None:
-    words = ["word"] * 5000
-    assert compare(words, words, engine="shingle") == (100.0, [Match(0, 0, 5000)])
+def test_long_passage_is_one_block() -> None:
+    passage = [f"p{k}" for k in range(150)]
+    words1 = [f"a{k}" for k in range(40)] + passage + [f"a{k}" for k in range(40, 80)]
+    words2 = [f"b{k}" for k in range(70)] + passage + [f"b{k}" for k in range(70, 90)]
+    assert compare(words1, words2, min_size=5, engine="shingle").blocks == [Match(40, 70, 150)]
+
+
+@pytest.mark.parametrize("pattern", [["w"], ["w", "w", "x"], ["w", "w", "w", "x"], ["w"] * 20 + ["x"]])
+def test_shingle_handles_repetitive_text_quickly(pattern: list[str]) -> None:
+    # Every pair of positions is a match here: this must not take quadratic time or memory.
+    words1 = ["w"] * 5000
+    words2 = pattern * (5000 // len(pattern))
+    blocks = compare(words1, words2, engine="shingle").blocks
+    assert sum(m.size for m in blocks) == words2.count("w")  # every run of "w" in words2 is matched
 
 
 def test_difflib_engine_matches_sequence_matcher(plagiarism_dir: Path) -> None:
