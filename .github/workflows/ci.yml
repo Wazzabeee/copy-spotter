@@ -1,75 +1,59 @@
-name: CI Pipeline
+name: CI
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+    branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
+  lint:
+    name: Lint and type check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run mypy
+
   test:
-    runs-on: ubuntu-latest
-    name: Do the tests pass?
+    name: Tests (Python ${{ matrix.python }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: macos-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.13"
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.11.5
-    - name: Install dependencies and run tests
-      run: |
-        sudo apt-get update && sudo apt-get install -y libgomp1
-        pip install -r requirements.txt
-        pip install pytest
-        pytest tests/
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked
+      - run: uv run pytest --cov --cov-report=term-missing
 
-  good-practices:
+  build:
+    name: Build package
     runs-on: ubuntu-latest
-    name: Do the code respects Python standards?
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.11.5
-    - name: Install dependencies and run linters
-      run: |
-        pip install -r requirements_lint.txt
-        pip install -r requirements.txt
-        black . --line-length=120 --check --verbose
-        flake8
-        pylint scripts/ --rcfile=setup.cfg --fail-under=9
-        mypy -p scripts --ignore-missing-imports --disallow-incomplete-defs
-    continue-on-error: true
-
-  release:
-      needs: [test, good-practices]
-      runs-on: ubuntu-latest
-      if: github.ref == 'refs/heads/main'
-      steps:
-        - uses: actions/checkout@v2
-          with:
-            fetch-depth: 0
-        - name: Bump version and push tag
-          uses: anothrNick/github-tag-action@1.67.0
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            WITH_V: true
-            DEFAULT_BUMP: auto
-            MAJOR_STRING_TOKEN: '^BREAKING CHANGE:'
-            MINOR_STRING_TOKEN: '^feat:'
-            PATCH_STRING_TOKEN: '^fix:'
-        - name: Set up Python
-          uses: actions/setup-python@v2
-          with:
-            python-version: '3.11.5'
-        - name: Build and publish
-          env:
-            TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-            TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-          run: |
-            pip install setuptools wheel twine
-            python setup.py sdist bdist_wheel
-            twine upload dist/*
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # hatch-vcs needs the tags to compute the version
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - name: Smoke test the wheel
+        run: |
+          uv venv /tmp/smoke
+          uv pip install --python /tmp/smoke dist/*.whl
+          /tmp/smoke/bin/copy-spotter --version
+          /tmp/smoke/bin/copy-spotter data/pdf/plagiarism -o /tmp/smoke-out --no-open
+          test -f /tmp/smoke-out/_results.html
