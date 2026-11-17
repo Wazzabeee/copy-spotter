@@ -4,8 +4,7 @@ import re
 from html import unescape
 from pathlib import Path
 
-from copy_spotter.extract import Document, tokenize_with_offsets
-from copy_spotter.report import (
+from copy_spotter._report import (
     RESULTS_FILENAME,
     PairResult,
     block_color,
@@ -15,6 +14,7 @@ from copy_spotter.report import (
     score_style,
     write_report,
 )
+from copy_spotter.extract import Document, tokenize_with_offsets
 from copy_spotter.similarity import Match, compare, coverage
 
 

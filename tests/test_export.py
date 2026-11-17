@@ -5,9 +5,9 @@ import json
 from pathlib import Path
 
 from copy_spotter import __version__
-from copy_spotter.export import CSV_FIELDS, export_data, write_csv, write_json
+from copy_spotter._export import CSV_FIELDS, export_data, write_csv, write_json
+from copy_spotter._report import PairResult
 from copy_spotter.extract import tokenize_with_offsets
-from copy_spotter.report import PairResult
 from copy_spotter.similarity import Match
 
 NAMES = ["a.txt", "b, with comma.txt", "c.txt"]
