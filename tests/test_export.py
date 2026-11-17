@@ -25,6 +25,9 @@ def test_export_data() -> None:
     assert data["version"] == 1
     assert data["copy_spotter_version"] == __version__
     assert (data["engine"], data["score_mode"], data["block_size"]) == ("shingle", "coverage", 2)
+    assert data["thresholds"] == [5.0, 10.0, 15.0]
+    custom = export_data(NAMES, DOCUMENTS, PAIRS, block_size=2, engine="shingle", thresholds=(1, 2, 3))
+    assert custom["thresholds"] == [1, 2, 3]
     assert data["documents"][1] == {"index": 1, "name": "b, with comma.txt", "word_count": 4}
     # Sorted by the higher coverage, highest first.
     assert [(p["index_1"], p["index_2"]) for p in data["pairs"]] == [(1, 2), (0, 1), (0, 2)]

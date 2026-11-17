@@ -13,6 +13,7 @@ JSON::
         "engine": "shingle" | "difflib",       # matching engine used for the run
         "score_mode": "coverage" | "ratio",    # score used to sort the pairs and shown in the report
         "block_size": int,                     # minimum block size used for the run
+        "thresholds": [float, float, float],   # score color steps of the HTML report, in percent
         "documents": [{"index": int, "name": str, "word_count": int}, ...],
         "pairs": [
             {
@@ -44,7 +45,7 @@ from typing import Any
 
 from copy_spotter import __version__
 from copy_spotter.extract import Document
-from copy_spotter.report import PairResult
+from copy_spotter.report import DEFAULT_THRESHOLDS, PairResult
 
 EXPORT_VERSION = 1
 CSV_FIELDS = ("document_1", "document_2", "coverage_1", "coverage_2", "ratio", "matched_words", "block_count")
@@ -66,6 +67,7 @@ def export_data(
     block_size: int,
     engine: str,
     score_mode: str = "coverage",
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> dict[str, Any]:
     """Return the JSON export as a dict (see the module docstring for the shape)."""
     return {
@@ -74,6 +76,7 @@ def export_data(
         "engine": engine,
         "score_mode": score_mode,
         "block_size": block_size,
+        "thresholds": list(thresholds),
         "documents": [
             {"index": k, "name": name, "word_count": len(doc.words)}
             for k, (name, doc) in enumerate(zip(names, documents, strict=True))
@@ -104,10 +107,13 @@ def write_json(
     block_size: int,
     engine: str,
     score_mode: str = "coverage",
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> Path:
     """Write the JSON export to ``path`` (parent directories are created) and return it."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    data = export_data(names, documents, pairs, block_size=block_size, engine=engine, score_mode=score_mode)
+    data = export_data(
+        names, documents, pairs, block_size=block_size, engine=engine, score_mode=score_mode, thresholds=thresholds
+    )
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
 

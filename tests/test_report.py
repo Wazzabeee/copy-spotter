@@ -217,3 +217,20 @@ def test_shingle_engine_blocks_render_on_original_text() -> None:
         "First, the Cat sat on the mat",
     ]
     assert unescape(re.sub(r"<[^>]+>", "", right.split("</h3>", 1)[1])).startswith(doc2.text)
+
+
+def test_score_style_thresholds() -> None:
+    assert score_style(5) == "color: green"
+    assert score_style(5.1) == "color: #b38f00"
+    assert score_style(15.1) == "color: #990033; font-weight: bold"
+    assert score_style(30, (40, 50, 60)) == "color: green"
+    assert score_style(55, (40, 50, 60)) == "color: #cc5200"
+
+
+def test_results_and_comparison_use_thresholds() -> None:
+    pair = PairResult(0, 1, 30.0, [], 30.0, 30.0)
+    assert "#990033" in render_results(["a", "b"], [pair], thresholds=(10, 20, 25))
+    assert "#990033" not in render_results(["a", "b"], [pair], thresholds=(40, 50, 60))
+    page = render_comparison(("a", "b"), (_doc("x"), _doc("y")), pair, thresholds=(40, 50, 60))
+    assert "#990033" not in page
+    assert "color: green" in page
