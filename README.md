@@ -1,83 +1,110 @@
 # Copy Spotter
 
-![PyPI - Version](https://img.shields.io/pypi/v/copy-spotter) ![PyPI - License](https://img.shields.io/pypi/l/copy-spotter)
-![Python](https://img.shields.io/badge/python-3.11-blue)
-
+[![PyPI - Version](https://img.shields.io/pypi/v/copy-spotter)](https://pypi.org/project/copy-spotter/)
+[![Python versions](https://img.shields.io/pypi/pyversions/copy-spotter)](https://pypi.org/project/copy-spotter/)
+[![CI](https://github.com/Wazzabeee/copy-spotter/actions/workflows/ci.yml/badge.svg)](https://github.com/Wazzabeee/copy-spotter/actions/workflows/ci.yml)
+[![PyPI - License](https://img.shields.io/pypi/l/copy-spotter)](LICENSE)
 
 ![GIF demo](https://raw.githubusercontent.com/Wazzabeee/copy-spotter/main/data/img/example.gif)
 
 ## About
-This program will process pdf, txt, docx, and odt files that can be found in the given input directory, find similar sentences, calculate similarity percentage, display a similarity table with links to side by side comparison where similar sentences are highlighted.
 
-**Usage**
----
+Copy Spotter compares every pair of documents (pdf, docx, odt, txt) found in a directory. It computes a similarity
+score for each pair and writes an HTML report: a list of the most similar pairs, a similarity matrix, and a side by
+side view of each pair where identical passages are highlighted with the same color.
 
-```bash
-$ pip install copy-spotter
-$ copy-spotter [-s] [-o] [-h] input_directory
-```
-***Positional Arguments:***
-* `input_directory`: One directory that contains all files (pdf, txt, docx, odt) (see `data/pdf/plagiarism` for example)
+Everything runs locally: your documents never leave your machine.
 
-```
-input_directory/
-│
-├── file_1.docx
-├── file_2.pdf
-└── file_3.pdf
-```
-
-***Optional Arguments:***
-* `-s`, `--block-size`: Set minimum number of consecutive and similar words detected. (Default is 2)
-* `-o`, `--out_dir`: Set the output directory for html files. (Default is creating a new directory called results)
-* `-h`, `--help`: Show this message and exit.
-
-**Examples**
----
-```bash
-# Analyze documents in 'data/pdf/plagiarism', with default settings
-$ copy-spotter data/pdf/plagiarism
-
-# Analyze with custom block size and specify output directory
-$ copy-spotter data/pdf/plagiarism -s 5 -o results/output
-```
-
-**Development Setup:**
----
+## Installation
 
 ```bash
-# Clone this repository
-$ git clone https://github.com/Wazzabeee/copy_spotter
-
-# Go into the repository
-$ cd copy_spotter
-
-# Install requirements
-$ pip install -r requirements.txt
-$ pip install -r requirements_lint.txt
-
-# Install precommit
-$ pip install pre-commit
-$ pre-commit install
-
-# Run tests
-$ pip install pytest
-$ pytest tests/
-
-# Run package locally
-$ python -m scripts.main [-s] [-o] [-h] input_directory
+pip install copy-spotter
 ```
 
-**Recommandations**
----
-- Please make sure that all text files are closed before running the program.
-- In order to get the best results please provide text files of the same languages.
-- Pdf files that are made from scanned images won't be processed correctly.
-- Ensure you have writing access when using the package 
-- If a specific file is not processed correctly feel free to [contact me](mailto:<clement45.delteil45@gmail.com>) so that I can address the issue.
+or, to run it without installing it permanently:
 
-**TODO**
----
-- Add more tests on existing functions
-- Implement OCR with tesseract for scanned documents
-- Add custom naming option for pdf files
+```bash
+uvx copy-spotter path/to/documents
+```
+
+Python 3.10 or newer is required.
+
+## Usage
+
+```bash
+copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [-r] [--no-open] [-V] in_dir
+```
+
+| Argument | Description |
+| --- | --- |
+| `in_dir` | Directory containing the documents to compare (pdf, docx, odt, txt). |
+| `-o`, `--out-dir` | Directory for the HTML results. Created if missing. Default: `./results/<timestamp>`. |
+| `-s`, `--block-size` | Minimum number of consecutive identical words to highlight. Default: 2. |
+| `-r`, `--recursive` | Also look for documents in subdirectories. |
+| `--no-open` | Do not open the results in a web browser. |
+| `-V`, `--version` | Show the version and exit. |
+
+Empty files and PDFs without a text layer (scanned documents) are skipped with a warning.
+
+### Examples
+
+```bash
+# Compare the example documents with default settings
+copy-spotter data/pdf/plagiarism
+
+# Only highlight runs of 5 identical words or more, and choose the output directory
+copy-spotter data/pdf/plagiarism -s 5 -o results/output
+```
+
+The results directory is self-contained: open `_results.html`, or zip the folder and share it.
+
+## How it works
+
+1. Text is extracted from each document and split into lowercase words.
+2. Each pair of documents is compared with Python's `difflib.SequenceMatcher`. The score is the share of words that
+   appear in the same order in both documents.
+3. Runs of at least `--block-size` identical consecutive words are highlighted in the side by side view.
+
+### Known limitations
+
+- Only exact word matches are detected: paraphrased or translated passages are not.
+- The score is diluted when documents have very different lengths (a short text fully copied into a long one gets a
+  low score).
+- Scanned PDFs need OCR before they can be compared.
+- The side by side view shows the extracted words, without the original formatting or punctuation.
+
+## Development
+
+```bash
+git clone https://github.com/Wazzabeee/copy-spotter
+cd copy-spotter
+
+# Install the package and the dev tools in .venv (requires uv: https://docs.astral.sh/uv/)
+uv sync
+
+# Install the git hooks
+uv run pre-commit install
+
+# Run the tests, the linter and the type checker
+uv run pytest
+uv run ruff check .
+uv run mypy
+
+# Run the CLI from the source tree
+uv run copy-spotter data/pdf/plagiarism
+```
+
+### Releasing
+
+Push a version tag; the release workflow runs the tests, publishes to PyPI with trusted publishing and creates the
+GitHub release.
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+## Contributing
+
+Bug reports and pull requests are welcome. If a document is not processed correctly, please
+[open an issue](https://github.com/Wazzabeee/copy-spotter/issues) and attach it if you can.
