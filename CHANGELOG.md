@@ -20,6 +20,8 @@
 - The report is now a single self-contained `_results.html` file (no external resources, works offline) with the
   sorted pairs, the matrix, filters on minimum score and document name, and a side-by-side view of any pair with its
   original text. `--report pages` keeps the multi-page output: a summary page plus one page per pair.
+- `--json PATH` and `--csv PATH` export the pairs sorted by score: names, both coverages, the ratio and the matching
+  blocks in JSON, with the engine and score mode of the run; one row per pair in CSV.
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at

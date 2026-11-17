@@ -13,6 +13,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from copy_spotter import __version__
+from copy_spotter.export import write_csv, write_json
 from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_document, is_supported
 from copy_spotter.report import SCORE_MODES, PairResult, write_report
 from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, compare, coverage
@@ -67,6 +68,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default="single",
         help="single: one self-contained HTML file (default); pages: a summary page plus one page per pair",
     )
+    parser.add_argument(
+        "--json", dest="json_path", type=Path, metavar="PATH", help="also write the pairs and matching blocks as JSON"
+    )
+    parser.add_argument("--csv", dest="csv_path", type=Path, metavar="PATH", help="also write one CSV row per pair")
     parser.add_argument("-r", "--recursive", action="store_true", help="also look for documents in subdirectories")
     parser.add_argument("--no-open", action="store_true", help="do not open the results in a web browser")
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
@@ -129,6 +134,19 @@ def run(args: argparse.Namespace) -> Path:
         f"{len(names)} documents from {in_dir.name}/, minimum block size {args.block_size}, "
         f"{args.engine} engine, {args.score} score, copy-spotter {__version__}"
     )
+    if args.json_path is not None:
+        json_path = write_json(
+            args.json_path.resolve(),
+            names,
+            documents,
+            pairs,
+            block_size=args.block_size,
+            engine=args.engine,
+            score_mode=args.score,
+        )
+        print(f"JSON saved at: {json_path}")
+    if args.csv_path is not None:
+        print(f"CSV saved at: {write_csv(args.csv_path.resolve(), names, pairs, score_mode=args.score)}")
     if args.report == "pages":
         return write_report(out_dir, names, documents, pairs, meta, score_mode=args.score)
     return write_single_report(out_dir, names, documents, pairs, meta, score_mode=args.score)
