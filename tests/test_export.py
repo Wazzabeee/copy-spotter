@@ -7,11 +7,12 @@ from pathlib import Path
 from copy_spotter import __version__
 from copy_spotter._compare import PairResult
 from copy_spotter._export import CSV_FIELDS, export_data, write_csv, write_json
-from copy_spotter.extract import tokenize_with_offsets
 from copy_spotter.similarity import Match
 
+from .conftest import make_document
+
 NAMES = ["a.txt", "b, with comma.txt", "c.txt"]
-DOCUMENTS = [tokenize_with_offsets(t) for t in ("X y z.", "x Y w v", "q")]
+DOCUMENTS = [make_document(t) for t in ("X y z.", "x Y w v", "q")]
 PAIRS = [
     PairResult(0, 1, 57.143, [Match(0, 0, 2)], 66.667, 50.0),
     PairResult(0, 2, 0.0, [], 0.0, 0.0),

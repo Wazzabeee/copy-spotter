@@ -6,10 +6,10 @@ import pytest
 from odf.opendocument import OpenDocumentText
 from odf.text import H, P
 
+from copy_spotter._documents import Document
 from copy_spotter._errors import UnsupportedFormatError
 from copy_spotter.extract import (
     clean_text,
-    extract_document,
     extract_text,
     extract_words,
     is_supported,
@@ -86,29 +86,30 @@ def test_missing_file(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("path", sorted(PLAGIARISM_DIR.iterdir()), ids=lambda p: p.suffix)
 def test_sample_files_words_are_unchanged(path: Path) -> None:
-    document = extract_document(path)
-    assert document.words == tokenize(extract_text(path))
-    assert [document.text[start:end].lower() for start, end in document.spans] == document.words
+    document = Document.from_path(path)
+    assert list(document.words) == tokenize(extract_text(path))
+    assert tuple(document.text[start:end].lower() for start, end in document.spans) == document.words
 
 
 def test_pdf_hard_wrapped_lines_are_joined(plagiarism_dir: Path) -> None:
-    text = extract_document(plagiarism_dir / "AI_Healthcare_Applications.pdf").text
+    text = Document.from_path(plagiarism_dir / "AI_Healthcare_Applications.pdf").text
     assert text.startswith("AI and Healthcare: Current Applications\n\nArtificial Intelligence (AI) has become")
     assert "integral part of the healthcare industry. Diagnostic" in text
     assert text.count("\n\n") == 4
 
 
 def test_offsets_keep_case_and_punctuation() -> None:
-    document = tokenize_with_offsets("Hello, World! It's 2024.")
-    assert document.words == ["hello", "world", "it", "s", "2024"]
-    assert [document.text[a:b] for a, b in document.spans] == ["Hello", "World", "It", "s", "2024"]
+    text = "Hello, World! It's 2024."
+    words, spans = tokenize_with_offsets(text)
+    assert words == ["hello", "world", "it", "s", "2024"]
+    assert [text[a:b] for a, b in spans] == ["Hello", "World", "It", "s", "2024"]
 
 
 def test_offsets_when_lowercasing_changes_length() -> None:
     text = "\u0130stanbul and \u0130zmir"  # "I" with a dot lowercases to two characters
-    document = tokenize_with_offsets(text)
-    assert document.words == tokenize(text)
-    assert [text[a:b] for a, b in document.spans] == ["\u0130", "stanbul", "and", "\u0130", "zmir"]
+    words, spans = tokenize_with_offsets(text)
+    assert words == tokenize(text)
+    assert [text[a:b] for a, b in spans] == ["\u0130", "stanbul", "and", "\u0130", "zmir"]
 
 
 @pytest.mark.parametrize("join_lines", [False, True])
@@ -125,4 +126,4 @@ def test_clean_text_normalizes_breaks() -> None:
 
 def test_docx_paragraphs_are_kept_as_lines(tmp_path: Path) -> None:
     docx = make_docx(tmp_path / "a.docx", ["Introduction", "Machine learning."])
-    assert extract_document(docx).text == "Introduction\nMachine learning."
+    assert Document.from_path(docx).text == "Introduction\nMachine learning."

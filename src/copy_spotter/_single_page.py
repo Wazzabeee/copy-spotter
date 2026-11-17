@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from copy_spotter._compare import PairResult
+from copy_spotter._documents import Document
 from copy_spotter._options import DEFAULT_THRESHOLDS
 from copy_spotter._report import RESULTS_FILENAME, _render, _template
-from copy_spotter.extract import Document
 
 DATA_VERSION = 1
 

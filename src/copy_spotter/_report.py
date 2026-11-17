@@ -9,8 +9,8 @@ from importlib.resources import files
 from pathlib import Path
 
 from copy_spotter._compare import PairResult
+from copy_spotter._documents import Document
 from copy_spotter._options import DEFAULT_THRESHOLDS
-from copy_spotter.extract import Document
 
 RESULTS_FILENAME = "_results.html"
 _PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")

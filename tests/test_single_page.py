@@ -5,16 +5,18 @@ import re
 from pathlib import Path
 
 from copy_spotter._compare import PairResult
+from copy_spotter._documents import Document
 from copy_spotter._report import RESULTS_FILENAME
 from copy_spotter._single_page import render_single, report_data, script_json, write_single_report
-from copy_spotter.extract import Document, tokenize_with_offsets
 from copy_spotter.similarity import compare, coverage
+
+from .conftest import make_document
 
 _DATA_RE = re.compile(r'<script type="application/json" id="report-data">(.*?)</script>', re.DOTALL)
 
 
 def _doc(text: str) -> Document:
-    return tokenize_with_offsets(text)
+    return make_document(text)
 
 
 def _embedded(html: str) -> dict[str, object]:
