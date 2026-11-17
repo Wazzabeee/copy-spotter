@@ -4,9 +4,9 @@ import re
 from html import unescape
 from pathlib import Path
 
+from copy_spotter._compare import PairResult
 from copy_spotter._report import (
     RESULTS_FILENAME,
-    PairResult,
     block_color,
     highlight,
     render_comparison,

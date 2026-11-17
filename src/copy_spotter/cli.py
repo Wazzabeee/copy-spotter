@@ -12,16 +12,16 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from copy_spotter import __version__
+from copy_spotter._compare import PairResult
+from copy_spotter._documents import find_documents
+from copy_spotter._errors import CopySpotterError
 from copy_spotter._export import write_csv, write_json
-from copy_spotter._report import DEFAULT_THRESHOLDS, SCORE_MODES, PairResult, write_report
+from copy_spotter._options import DEFAULT_THRESHOLDS, REPORT_LAYOUTS, SCORE_MODES, check_block_size, check_thresholds
+from copy_spotter._report import write_report
 from copy_spotter._single_page import write_single_report
-from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_document, is_supported
+from copy_spotter._version import __version__
+from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_document
 from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, compare, coverage
-
-
-class CopySpotterError(Exception):
-    """Error shown to the user without a traceback."""
 
 
 def parse_thresholds(text: str) -> tuple[float, float, float]:
@@ -32,10 +32,12 @@ def parse_thresholds(text: str) -> tuple[float, float, float]:
         raise argparse.ArgumentTypeError(f"expected three numbers such as 5,10,15, got {text!r}") from None
     if len(values) != 3:
         raise argparse.ArgumentTypeError(f"expected three numbers such as 5,10,15, got {len(values)}")
-    low, medium, high = values
-    if not 0 <= low < medium < high <= 100:
-        raise argparse.ArgumentTypeError(f"thresholds must be increasing percentages between 0 and 100, got {text!r}")
-    return low, medium, high
+    try:
+        return check_thresholds(values)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"thresholds must be increasing percentages between 0 and 100, got {text!r}"
+        ) from None
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -78,7 +80,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--report",
-        choices=("single", "pages"),
+        choices=REPORT_LAYOUTS,
         default="single",
         help="single: one self-contained HTML file (default); pages: a summary page plus one page per pair",
     )
@@ -97,22 +99,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-open", action="store_true", help="do not open the results in a web browser")
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
     args = parser.parse_args(argv)
-    if args.block_size < 1:
+    try:
+        check_block_size(args.block_size)
+    except ValueError:
         parser.error("--block-size must be at least 1")
     return args
-
-
-def find_documents(in_dir: Path, recursive: bool = False, exclude: Path | None = None) -> list[Path]:
-    """Return the supported documents in ``in_dir``, sorted by path."""
-    candidates = in_dir.rglob("*") if recursive else in_dir.iterdir()
-    documents = []
-    for path in candidates:
-        if not path.is_file() or not is_supported(path) or path.name.startswith("."):
-            continue
-        if exclude is not None and path.resolve().is_relative_to(exclude):
-            continue
-        documents.append(path)
-    return sorted(documents)
 
 
 def run(args: argparse.Namespace) -> Path:
@@ -123,7 +114,7 @@ def run(args: argparse.Namespace) -> Path:
 
     out_dir: Path = (args.out_dir or Path("results") / datetime.now().strftime("%Y%m%d_%H%M%S")).resolve()
 
-    paths = find_documents(in_dir, args.recursive, exclude=out_dir)
+    paths = find_documents(in_dir, recursive=args.recursive, exclude=out_dir)
     names, texts, documents = [], [], []
     for path in tqdm(paths, desc="Reading files", disable=None):
         name = path.relative_to(in_dir).as_posix()

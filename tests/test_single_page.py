@@ -4,7 +4,8 @@ import json
 import re
 from pathlib import Path
 
-from copy_spotter._report import RESULTS_FILENAME, PairResult
+from copy_spotter._compare import PairResult
+from copy_spotter._report import RESULTS_FILENAME
 from copy_spotter._single_page import render_single, report_data, script_json, write_single_report
 from copy_spotter.extract import Document, tokenize_with_offsets
 from copy_spotter.similarity import compare, coverage

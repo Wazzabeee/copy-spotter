@@ -43,8 +43,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from copy_spotter import __version__
-from copy_spotter._report import DEFAULT_THRESHOLDS, PairResult
+from copy_spotter._compare import PairResult
+from copy_spotter._options import DEFAULT_THRESHOLDS
+from copy_spotter._version import __version__
 from copy_spotter.extract import Document
 
 EXPORT_VERSION = 1

@@ -14,6 +14,8 @@ from odf.namespaces import TEXTNS
 from odf.opendocument import load as load_odt
 from pdfminer.high_level import extract_text as extract_pdf_text
 
+from copy_spotter._errors import UnsupportedFormatError
+
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".odt", ".txt")
 
 # Encodings tried in order for plain text files. cp1252 is a superset of latin-1 for printable
@@ -32,10 +34,6 @@ _PARAGRAPH_BREAK_RE = re.compile(r"\n{2,}")
 # A single line break inside a paragraph, unless the next line starts a list item (bullet or "1." / "1)").
 _LIST_MARKER = r"(?:[-*\u2022\u25aa\u25e6\u2023\u2043]|\d+[.)])\s"
 _SOFT_LINE_BREAK_RE = re.compile(rf"(?<=[^\n])\n[^\S\n]*(?=\S)(?!{_LIST_MARKER})")
-
-
-class UnsupportedFileError(ValueError):
-    """Raised when a file extension is not supported."""
 
 
 @dataclass(frozen=True)
@@ -156,7 +154,7 @@ def extract_text(path: str | Path) -> str:
         raise FileNotFoundError(f"Not a file: {path}")
     reader = _READERS.get(path.suffix.lower())
     if reader is None:
-        raise UnsupportedFileError(
+        raise UnsupportedFormatError(
             f"Unsupported file format: {path.name}. Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}"
         )
     return reader(path)

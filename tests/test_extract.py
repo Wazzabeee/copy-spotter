@@ -6,8 +6,8 @@ import pytest
 from odf.opendocument import OpenDocumentText
 from odf.text import H, P
 
+from copy_spotter._errors import UnsupportedFormatError
 from copy_spotter.extract import (
-    UnsupportedFileError,
     clean_text,
     extract_document,
     extract_text,
@@ -75,7 +75,7 @@ def test_unsupported_extension(tmp_path: Path) -> None:
     path = tmp_path / "image.png"
     path.write_bytes(b"\x89PNG")
     assert not is_supported(path)
-    with pytest.raises(UnsupportedFileError):
+    with pytest.raises(UnsupportedFormatError):
         extract_text(path)
 
 

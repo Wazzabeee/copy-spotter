@@ -4,44 +4,16 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
 from html import escape
 from importlib.resources import files
 from pathlib import Path
 
+from copy_spotter._compare import PairResult
+from copy_spotter._options import DEFAULT_THRESHOLDS
 from copy_spotter.extract import Document
-from copy_spotter.similarity import Match
 
 RESULTS_FILENAME = "_results.html"
-SCORE_MODES = ("coverage", "ratio")
-DEFAULT_THRESHOLDS = (5.0, 10.0, 15.0)
 _PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
-
-
-@dataclass(frozen=True)
-class PairResult:
-    """Comparison of documents ``i`` and ``j`` (indexes into the document list).
-
-    ``score`` is the symmetric similarity of the matching engine; ``coverage_i`` is the percentage of
-    document ``i`` found in document ``j`` and ``coverage_j`` the percentage of ``j`` found in ``i``.
-    """
-
-    i: int
-    j: int
-    score: float
-    blocks: list[Match]
-    coverage_i: float
-    coverage_j: float
-
-    def scores(self, score_mode: str = "coverage") -> tuple[float, float]:
-        """Return the score shown for (``i`` in ``j``, ``j`` in ``i``); both are ``score`` in ratio mode."""
-        if score_mode == "ratio":
-            return self.score, self.score
-        return self.coverage_i, self.coverage_j
-
-    @property
-    def filename(self) -> str:
-        return f"{self.i}_{self.j}.html"
 
 
 def _template(name: str) -> str:
