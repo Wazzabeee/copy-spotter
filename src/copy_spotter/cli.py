@@ -14,8 +14,8 @@ from tqdm import tqdm
 
 from copy_spotter import __version__
 from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_words, is_supported
-from copy_spotter.report import PairResult, write_report
-from copy_spotter.similarity import compare
+from copy_spotter.report import SCORE_MODES, PairResult, write_report
+from copy_spotter.similarity import compare, coverage
 
 
 class CopySpotterError(Exception):
@@ -45,6 +45,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=int,
         default=2,
         help="minimum number of consecutive identical words to highlight (default: 2)",
+    )
+    parser.add_argument(
+        "--score",
+        choices=SCORE_MODES,
+        default="coverage",
+        help="coverage: %% of each document found in the other (asymmetric); "
+        "ratio: symmetric difflib ratio of the pair (default: coverage)",
     )
     parser.add_argument("-r", "--recursive", action="store_true", help="also look for documents in subdirectories")
     parser.add_argument("--no-open", action="store_true", help="do not open the results in a web browser")
@@ -100,12 +107,14 @@ def run(args: argparse.Namespace) -> Path:
     pairs = []
     for i, j in tqdm(list(combinations(range(len(texts)), 2)), desc="Comparing files", disable=None):
         score, blocks = compare(texts[i], texts[j], args.block_size)
-        pairs.append(PairResult(i, j, score, blocks))
+        coverage_i, coverage_j = coverage(blocks, len(texts[i]), len(texts[j]))
+        pairs.append(PairResult(i, j, score, blocks, coverage_i, coverage_j))
 
     meta = (
-        f"{len(names)} documents from {in_dir.name}/, minimum block size {args.block_size}, copy-spotter {__version__}"
+        f"{len(names)} documents from {in_dir.name}/, minimum block size {args.block_size}, "
+        f"{args.score} score, copy-spotter {__version__}"
     )
-    return write_report(out_dir, names, texts, pairs, meta)
+    return write_report(out_dir, names, texts, pairs, meta, score_mode=args.score)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

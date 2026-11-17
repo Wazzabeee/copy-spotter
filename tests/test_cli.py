@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
@@ -75,6 +76,45 @@ def test_recursive_skips_output_dir(tmp_path: Path) -> None:
     assert main([str(in_dir), "-r", "-o", str(out_dir), "--no-open"]) == 0
     assert "c.txt" not in (out_dir / "_results.html").read_text()
     assert "sub/b.txt" in (out_dir / "_results.html").read_text()
+
+
+def _write_short_and_long(in_dir: Path) -> None:
+    in_dir.mkdir()
+    short = " ".join(f"s{k}" for k in range(30))
+    filler = [f"l{k}" for k in range(270)]
+    (in_dir / "a_short.txt").write_text(short)
+    (in_dir / "b_long.txt").write_text(" ".join(filler[:150]) + " " + short + " " + " ".join(filler[150:]))
+
+
+def test_default_score_is_asymmetric_coverage(tmp_path: Path) -> None:
+    _write_short_and_long(tmp_path / "in")
+    out_dir = tmp_path / "out"
+    assert main([str(tmp_path / "in"), "-o", str(out_dir), "--no-open"]) == 0
+    results = (out_dir / "_results.html").read_text()
+    matrix = results.split("Similarity matrix", 1)[1]
+    assert re.search(r'a_short\.txt</th><td class="self">-</td><td><a [^>]*>100</a>', matrix)
+    assert re.search(r'b_long\.txt</th><td><a [^>]*>10</a></td><td class="self">', matrix)
+    page = (out_dir / "0_1.html").read_text()
+    assert "a_short.txt found in b_long.txt: <span" in page
+
+
+def test_score_ratio_restores_the_symmetric_score(tmp_path: Path) -> None:
+    _write_short_and_long(tmp_path / "in")
+    out_dir = tmp_path / "out"
+    assert main([str(tmp_path / "in"), "-o", str(out_dir), "--no-open", "--score", "ratio"]) == 0
+    results = (out_dir / "_results.html").read_text()
+    scores = re.findall(r'href="0_1.html"[^>]*>([^<]*)<', results)
+    assert scores == ["18.182"] * 3  # pair list plus both matrix cells
+    page = (out_dir / "0_1.html").read_text()
+    assert re.search(r"Similarity: <span[^>]*>18\.182%</span>", page)
+    assert "found in" not in page
+
+
+def test_score_option() -> None:
+    assert parse_args(["in"]).score == "coverage"
+    assert parse_args(["in", "--score", "ratio"]).score == "ratio"
+    with pytest.raises(SystemExit):
+        parse_args(["in", "--score", "bogus"])
 
 
 def test_legacy_flag_spellings() -> None:

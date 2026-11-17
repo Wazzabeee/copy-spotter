@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+- Scores take document length into account: each pair now has two directional coverage scores, the percentage of
+  each document found in the other. A short text fully copied into a long document scores 100% in that direction.
+- The similarity matrix is no longer symmetric: the cell at row A, column B is the percentage of A found in B.
+- The pairs list shows both directions and is sorted by the higher one; comparison pages show both directions.
+- New `--score {coverage,ratio}` option. `coverage` is the default; `ratio` restores the previous symmetric `difflib`
+  score everywhere.
+
 ## 0.2.0 (unreleased)
 
 ### Breaking changes
