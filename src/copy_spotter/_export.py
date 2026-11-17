@@ -38,49 +38,36 @@ CSV columns: ``document_1, document_2, coverage_1, coverage_2, ratio, matched_wo
 from __future__ import annotations
 
 import csv
+import io
 import json
 from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from copy_spotter._compare import PairResult
-from copy_spotter._documents import Document
-from copy_spotter._options import DEFAULT_THRESHOLDS
+from copy_spotter._options import DEFAULT_THRESHOLDS, ScoreMode
 from copy_spotter._version import __version__
+
+if TYPE_CHECKING:
+    from copy_spotter._results import Results
 
 EXPORT_VERSION = 1
 CSV_FIELDS = ("document_1", "document_2", "coverage_1", "coverage_2", "ratio", "matched_words", "block_count")
 
 
-def _sorted(pairs: Sequence[PairResult], score_mode: str) -> list[PairResult]:
-    return sorted(pairs, key=lambda p: (-max(p.scores(score_mode)), p.i, p.j))
-
-
-def _matched_words(pair: PairResult) -> int:
-    return sum(m.size for m in pair.blocks)
-
-
 def export_data(
-    names: Sequence[str],
-    documents: Sequence[Document],
-    pairs: Sequence[PairResult],
-    *,
-    block_size: int,
-    engine: str,
-    score_mode: str = "coverage",
-    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
+    results: Results, *, score: ScoreMode = "coverage", thresholds: Sequence[float] = DEFAULT_THRESHOLDS
 ) -> dict[str, Any]:
     """Return the JSON export as a dict (see the module docstring for the shape)."""
+    names = [document.name for document in results.documents]
     return {
         "version": EXPORT_VERSION,
         "copy_spotter_version": __version__,
-        "engine": engine,
-        "score_mode": score_mode,
-        "block_size": block_size,
+        "engine": results.engine,
+        "score_mode": score,
+        "block_size": results.block_size,
         "thresholds": list(thresholds),
         "documents": [
-            {"index": k, "name": name, "word_count": len(doc.words)}
-            for k, (name, doc) in enumerate(zip(names, documents, strict=True))
+            {"index": k, "name": document.name, "word_count": len(document.words)}
+            for k, document in enumerate(results.documents)
         ],
         "pairs": [
             {
@@ -90,43 +77,28 @@ def export_data(
                 "index_2": p.j,
                 "coverage_1": p.coverage_i,
                 "coverage_2": p.coverage_j,
-                "ratio": p.score,
-                "matched_words": _matched_words(p),
+                "ratio": p.ratio,
+                "matched_words": p.matched_words,
                 "blocks": [{"start_1": m.a, "start_2": m.b, "size": m.size} for m in p.blocks],
             }
-            for p in _sorted(pairs, score_mode)
+            for p in results.ranked(score)
         ],
     }
 
 
-def write_json(
-    path: Path,
-    names: Sequence[str],
-    documents: Sequence[Document],
-    pairs: Sequence[PairResult],
-    *,
-    block_size: int,
-    engine: str,
-    score_mode: str = "coverage",
-    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
-) -> Path:
-    """Write the JSON export to ``path`` (parent directories are created) and return it."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = export_data(
-        names, documents, pairs, block_size=block_size, engine=engine, score_mode=score_mode, thresholds=thresholds
-    )
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return path
+def export_json(
+    results: Results, *, score: ScoreMode = "coverage", thresholds: Sequence[float] = DEFAULT_THRESHOLDS
+) -> str:
+    """Return the JSON export as indented text ending with a newline."""
+    return json.dumps(export_data(results, score=score, thresholds=thresholds), ensure_ascii=False, indent=2) + "\n"
 
 
-def write_csv(path: Path, names: Sequence[str], pairs: Sequence[PairResult], *, score_mode: str = "coverage") -> Path:
-    """Write one CSV row per pair to ``path`` (parent directories are created) and return it."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(CSV_FIELDS)
-        for p in _sorted(pairs, score_mode):
-            writer.writerow(
-                [names[p.i], names[p.j], p.coverage_i, p.coverage_j, p.score, _matched_words(p), len(p.blocks)]
-            )
-    return path
+def export_csv(results: Results, *, score: ScoreMode = "coverage") -> str:
+    """Return the CSV export: a header and one row per pair, each ending with ``\\r\\n``."""
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(CSV_FIELDS)
+    names = [document.name for document in results.documents]
+    for p in results.ranked(score):
+        writer.writerow([names[p.i], names[p.j], p.coverage_i, p.coverage_j, p.ratio, p.matched_words, len(p.blocks)])
+    return out.getvalue()

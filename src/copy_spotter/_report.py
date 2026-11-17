@@ -6,14 +6,22 @@ import re
 from collections.abc import Iterable, Sequence
 from html import escape
 from importlib.resources import files
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from copy_spotter._compare import PairResult
-from copy_spotter._documents import Document
-from copy_spotter._options import DEFAULT_THRESHOLDS
+from copy_spotter._options import DEFAULT_THRESHOLDS, ScoreMode
+
+if TYPE_CHECKING:
+    from copy_spotter._compare import Pair
+    from copy_spotter._documents import Document
+    from copy_spotter._results import Results
 
 RESULTS_FILENAME = "_results.html"
 _PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
+
+
+def page_name(pair: Pair) -> str:
+    """Return the file name of the comparison page of ``pair`` in the multi-page report."""
+    return f"{pair.i}_{pair.j}.html"
 
 
 def _template(name: str) -> str:
@@ -75,14 +83,15 @@ def _score_span(score: float, thresholds: Sequence[float]) -> str:
 
 
 def render_comparison(
-    names: tuple[str, str],
-    documents: tuple[Document, Document],
-    pair: PairResult,
-    score_mode: str = "coverage",
+    results: Results,
+    pair: Pair,
+    score_mode: ScoreMode = "coverage",
     *,
     thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> str:
     """Return the side-by-side HTML page for one pair of documents."""
+    documents = results.documents[pair.i], results.documents[pair.j]
+    names = documents[0].name, documents[1].name
     left = highlight(documents[0], [(m.a, m.size, k) for k, m in enumerate(pair.blocks)])
     right = highlight(documents[1], [(m.b, m.size, k) for k, m in enumerate(pair.blocks)])
     return _render(
@@ -96,7 +105,7 @@ def render_comparison(
     )
 
 
-def _comparison_score(names: tuple[str, str], pair: PairResult, score_mode: str, thresholds: Sequence[float]) -> str:
+def _comparison_score(names: tuple[str, str], pair: Pair, score_mode: ScoreMode, thresholds: Sequence[float]) -> str:
     left_in_right, right_in_left = pair.scores(score_mode)
     if score_mode == "ratio":
         return f"Similarity: {_score_span(left_in_right, thresholds)}"
@@ -107,15 +116,14 @@ def _comparison_score(names: tuple[str, str], pair: PairResult, score_mode: str,
     )
 
 
-def _score_link(pair: PairResult, score: float, thresholds: Sequence[float]) -> str:
-    return f'<a href="{pair.filename}" style="{score_style(score, thresholds)}">{score:g}</a>'
+def _score_link(pair: Pair, score: float, thresholds: Sequence[float]) -> str:
+    return f'<a href="{page_name(pair)}" style="{score_style(score, thresholds)}">{score:g}</a>'
 
 
 def render_results(
-    names: Sequence[str],
-    pairs: Sequence[PairResult],
+    results: Results,
     meta: str = "",
-    score_mode: str = "coverage",
+    score_mode: ScoreMode = "coverage",
     *,
     thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> str:
@@ -124,8 +132,9 @@ def render_results(
     In coverage mode the matrix is not symmetric: the cell at row ``i``, column ``j`` is the
     percentage of document ``i`` found in document ``j``.
     """
-    by_cell: dict[tuple[int, int], tuple[PairResult, float]] = {}
-    for pair in pairs:
+    names = [document.name for document in results.documents]
+    by_cell: dict[tuple[int, int], tuple[Pair, float]] = {}
+    for pair in results.pairs:
         i_in_j, j_in_i = pair.scores(score_mode)
         by_cell[pair.i, pair.j] = pair, i_in_j
         by_cell[pair.j, pair.i] = pair, j_in_i
@@ -141,7 +150,7 @@ def render_results(
         matrix_legend = "Each cell is the % of the row document found in the column document."
 
     pair_rows = []
-    for p in sorted(pairs, key=lambda p: max(p.scores(score_mode)), reverse=True):
+    for p in results.ranked(score_mode):
         shown = p.scores(score_mode)[:1] if score_mode == "ratio" else p.scores(score_mode)
         links = "".join(f"<td>{_score_link(p, s, thresholds)}</td>" for s in shown)
         pair_rows.append(
@@ -169,27 +178,15 @@ def render_results(
     )
 
 
-def write_report(
-    out_dir: Path,
-    names: Sequence[str],
-    documents: Sequence[Document],
-    pairs: Sequence[PairResult],
+def render_pages(
+    results: Results,
     meta: str = "",
     *,
-    score_mode: str = "coverage",
+    score: ScoreMode = "coverage",
     thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
-) -> Path:
-    """Write the summary page and every comparison page into ``out_dir``; return the summary path."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for pair in pairs:
-        page = render_comparison(
-            (names[pair.i], names[pair.j]),
-            (documents[pair.i], documents[pair.j]),
-            pair,
-            score_mode,
-            thresholds=thresholds,
-        )
-        (out_dir / pair.filename).write_text(page, encoding="utf-8")
-    results = out_dir / RESULTS_FILENAME
-    results.write_text(render_results(names, pairs, meta, score_mode, thresholds=thresholds), encoding="utf-8")
-    return results
+) -> dict[str, str]:
+    """Return the multi-page report as ``{file name: html}``: the summary page first, then one page per pair."""
+    pages = {RESULTS_FILENAME: render_results(results, meta, score, thresholds=thresholds)}
+    for pair in results.pairs:
+        pages[page_name(pair)] = render_comparison(results, pair, score, thresholds=thresholds)
+    return pages
