@@ -132,6 +132,14 @@ uv run mypy
 uv run copy-spotter data/pdf/plagiarism
 ```
 
+`tests/test_golden.py` freezes the CLI outputs (HTML reports, JSON and CSV exports) for the documents in
+`tests/golden/inputs`. When a change to the outputs is intended, regenerate the goldens and review the diff
+before committing:
+
+```bash
+COPY_SPOTTER_UPDATE_GOLDEN=1 uv run pytest tests/test_golden.py
+```
+
 ### Releasing
 
 Push a version tag; the release workflow runs the tests, publishes to PyPI with trusted publishing and creates the

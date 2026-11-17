@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>long.txt vs refrain.txt</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #222;
+            background: #fff;
+        }
+
+        header {
+            display: flex;
+            align-items: baseline;
+            gap: 16px;
+            padding: 12px 20px 0;
+        }
+
+        header .score {
+            font-weight: bold;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 20px 20px;
+        }
+
+        .content {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow: auto;
+            height: 85vh;
+            line-height: 1.5;
+        }
+
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            overflow-wrap: anywhere;
+        }
+
+        .text {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .match {
+            font-weight: bold;
+        }
+
+        a {
+            color: #06c;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 800px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .content {
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="_results.html">&larr; All results</a>
+        <span class="score">Similarity: <span style="color: green">1.829%</span></span>
+    </header>
+    <div class="container">
+        <div class="content" id="leftContent"><h3>long.txt</h3><div class="text">Academic integrity is the quiet agreement that holds a school together. Students trust that grades reflect real effort, and teachers trust that the work in front of them was written by the person who signed it.
+
+Rivers carve their valleys slowly, one grain of sand at a time, until the landscape looks as if it had always been that way.
+
+Copying a few sentences from a classmate may look harmless, but a careful reader notices the change in voice at once. Good writing keeps one voice from the first line to the last, and every borrowed idea is given its source.
+
+Detection tools compare documents word by word and report the passages they share. A tool cannot judge intent, so a teacher must always read the highlighted passages before drawing a conclusion.
+
+Rivers carve their valleys slowly, one grain of sand at a time.
+
+A short history of the library: the first catalogue was written by hand, the second was typed, and the third lives on a server in a basement that nobody visits. Librarians still remember the smell of the card drawers and the sound of the stamp on the return date.
+
+In the end, the best defence against plagiarism is an assignment that asks for personal thinking, clear sources and honest drafts. Students who keep their drafts can always show how an idea grew, and teachers who read those drafts learn more than any score could tell them.</div></div>
+        <div class="content" id="rightContent"><h3>refrain.txt</h3><div class="text">The chorus goes very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very loud, and then it stops.</div></div>
+    </div>
+</body>
+</html>

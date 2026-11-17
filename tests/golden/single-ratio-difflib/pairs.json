@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "copy_spotter_version": "<VERSION>",
+  "engine": "difflib",
+  "score_mode": "ratio",
+  "block_size": 2,
+  "thresholds": [
+    5.0,
+    10.0,
+    15.0
+  ],
+  "documents": [
+    {
+      "index": 0,
+      "name": "essay.docx",
+      "word_count": 112
+    },
+    {
+      "index": 1,
+      "name": "long.txt",
+      "word_count": 240
+    },
+    {
+      "index": 2,
+      "name": "notes.odt",
+      "word_count": 45
+    },
+    {
+      "index": 3,
+      "name": "refrain.txt",
+      "word_count": 88
+    },
+    {
+      "index": 4,
+      "name": "short.txt",
+      "word_count": 41
+    }
+  ],
+  "pairs": [
+    {
+      "document_1": "long.txt",
+      "document_2": "short.txt",
+      "index_1": 1,
+      "index_2": 4,
+      "coverage_1": 17.083,
+      "coverage_2": 100.0,
+      "ratio": 29.181,
+      "matched_words": 41,
+      "blocks": [
+        {
+          "start_1": 60,
+          "start_2": 0,
+          "size": 41
+        }
+      ]
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "long.txt",
+      "index_1": 0,
+      "index_2": 1,
+      "coverage_1": 25.0,
+      "coverage_2": 11.667,
+      "ratio": 17.045,
+      "matched_words": 28,
+      "blocks": [
+        {
+          "start_1": 64,
+          "start_2": 36,
+          "size": 24
+        },
+        {
+          "start_1": 88,
+          "start_2": 207,
+          "size": 2
+        },
+        {
+          "start_1": 91,
+          "start_2": 233,
+          "size": 2
+        }
+      ]
+    },
+    {
+      "document_1": "long.txt",
+      "document_2": "notes.odt",
+      "index_1": 1,
+      "index_2": 2,
+      "coverage_1": 7.5,
+      "coverage_2": 40.0,
+      "ratio": 15.439,
+      "matched_words": 18,
+      "blocks": [
+        {
+          "start_1": 0,
+          "start_2": 4,
+          "size": 9
+        },
+        {
+          "start_1": 9,
+          "start_2": 18,
+          "size": 2
+        },
+        {
+          "start_1": 121,
+          "start_2": 25,
+          "size": 7
+        }
+      ]
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "notes.odt",
+      "index_1": 0,
+      "index_2": 2,
+      "coverage_1": 6.25,
+      "coverage_2": 15.556,
+      "ratio": 12.739,
+      "matched_words": 7,
+      "blocks": [
+        {
+          "start_1": 23,
+          "start_2": 25,
+          "size": 7
+        }
+      ]
+    },
+    {
+      "document_1": "notes.odt",
+      "document_2": "refrain.txt",
+      "index_1": 2,
+      "index_2": 3,
+      "coverage_1": 15.556,
+      "coverage_2": 7.955,
+      "ratio": 10.526,
+      "matched_words": 7,
+      "blocks": [
+        {
+          "start_1": 35,
+          "start_2": 0,
+          "size": 2
+        },
+        {
+          "start_1": 38,
+          "start_2": 79,
+          "size": 5
+        }
+      ]
+    },
+    {
+      "document_1": "refrain.txt",
+      "document_2": "short.txt",
+      "index_1": 3,
+      "index_2": 4,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 3.101,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "short.txt",
+      "index_1": 0,
+      "index_2": 4,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 2.614,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "notes.odt",
+      "document_2": "short.txt",
+      "index_1": 2,
+      "index_2": 4,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 2.326,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "refrain.txt",
+      "index_1": 0,
+      "index_2": 3,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 2.0,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "long.txt",
+      "document_2": "refrain.txt",
+      "index_1": 1,
+      "index_2": 3,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 1.829,
+      "matched_words": 0,
+      "blocks": []
+    }
+  ]
+}

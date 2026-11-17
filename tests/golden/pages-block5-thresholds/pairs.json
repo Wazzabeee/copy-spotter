@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "copy_spotter_version": "<VERSION>",
+  "engine": "shingle",
+  "score_mode": "coverage",
+  "block_size": 5,
+  "thresholds": [
+    20.0,
+    40.0,
+    60.0
+  ],
+  "documents": [
+    {
+      "index": 0,
+      "name": "essay.docx",
+      "word_count": 112
+    },
+    {
+      "index": 1,
+      "name": "long.txt",
+      "word_count": 240
+    },
+    {
+      "index": 2,
+      "name": "notes.odt",
+      "word_count": 45
+    },
+    {
+      "index": 3,
+      "name": "refrain.txt",
+      "word_count": 88
+    },
+    {
+      "index": 4,
+      "name": "short.txt",
+      "word_count": 41
+    }
+  ],
+  "pairs": [
+    {
+      "document_1": "long.txt",
+      "document_2": "short.txt",
+      "index_1": 1,
+      "index_2": 4,
+      "coverage_1": 17.083,
+      "coverage_2": 100.0,
+      "ratio": 29.181,
+      "matched_words": 41,
+      "blocks": [
+        {
+          "start_1": 60,
+          "start_2": 0,
+          "size": 41
+        }
+      ]
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "long.txt",
+      "index_1": 0,
+      "index_2": 1,
+      "coverage_1": 53.571,
+      "coverage_2": 25.0,
+      "ratio": 34.091,
+      "matched_words": 60,
+      "blocks": [
+        {
+          "start_1": 3,
+          "start_2": 101,
+          "size": 31
+        },
+        {
+          "start_1": 64,
+          "start_2": 36,
+          "size": 24
+        },
+        {
+          "start_1": 93,
+          "start_2": 209,
+          "size": 5
+        }
+      ]
+    },
+    {
+      "document_1": "long.txt",
+      "document_2": "notes.odt",
+      "index_1": 1,
+      "index_2": 2,
+      "coverage_1": 6.667,
+      "coverage_2": 35.556,
+      "ratio": 11.228,
+      "matched_words": 16,
+      "blocks": [
+        {
+          "start_1": 0,
+          "start_2": 4,
+          "size": 9
+        },
+        {
+          "start_1": 121,
+          "start_2": 25,
+          "size": 7
+        }
+      ]
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "notes.odt",
+      "index_1": 0,
+      "index_2": 2,
+      "coverage_1": 6.25,
+      "coverage_2": 15.556,
+      "ratio": 8.917,
+      "matched_words": 7,
+      "blocks": [
+        {
+          "start_1": 23,
+          "start_2": 25,
+          "size": 7
+        }
+      ]
+    },
+    {
+      "document_1": "notes.odt",
+      "document_2": "refrain.txt",
+      "index_1": 2,
+      "index_2": 3,
+      "coverage_1": 11.111,
+      "coverage_2": 5.682,
+      "ratio": 7.519,
+      "matched_words": 5,
+      "blocks": [
+        {
+          "start_1": 38,
+          "start_2": 79,
+          "size": 5
+        }
+      ]
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "refrain.txt",
+      "index_1": 0,
+      "index_2": 3,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 0.0,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "essay.docx",
+      "document_2": "short.txt",
+      "index_1": 0,
+      "index_2": 4,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 0.0,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "long.txt",
+      "document_2": "refrain.txt",
+      "index_1": 1,
+      "index_2": 3,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 0.0,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "notes.odt",
+      "document_2": "short.txt",
+      "index_1": 2,
+      "index_2": 4,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 0.0,
+      "matched_words": 0,
+      "blocks": []
+    },
+    {
+      "document_1": "refrain.txt",
+      "document_2": "short.txt",
+      "index_1": 3,
+      "index_2": 4,
+      "coverage_1": 0.0,
+      "coverage_2": 0.0,
+      "ratio": 0.0,
+      "matched_words": 0,
+      "blocks": []
+    }
+  ]
+}
