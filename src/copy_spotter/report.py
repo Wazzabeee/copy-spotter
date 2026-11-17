@@ -14,6 +14,7 @@ from copy_spotter.similarity import Match
 
 RESULTS_FILENAME = "_results.html"
 SCORE_MODES = ("coverage", "ratio")
+DEFAULT_THRESHOLDS = (5.0, 10.0, 15.0)
 _PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
@@ -54,11 +55,12 @@ def _render(template: str, **values: str) -> str:
 
 def score_style(score: float) -> str:
     """Return the CSS for a similarity score: the higher, the more alarming."""
-    if score > 15:
+    low, medium, high = DEFAULT_THRESHOLDS
+    if score > high:
         return "color: #990033; font-weight: bold"
-    if score > 10:
+    if score > medium:
         return "color: #cc5200"
-    if score > 5:
+    if score > low:
         return "color: #b38f00"
     return "color: green"
 

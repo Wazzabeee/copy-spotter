@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -15,9 +17,29 @@ def _copy_samples(src: Path, dst: Path) -> Path:
     return dst
 
 
+def _embedded(html: str) -> dict[str, Any]:
+    match = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', html, re.DOTALL)
+    assert match is not None
+    data = json.loads(match.group(1))
+    assert isinstance(data, dict)
+    return data
+
+
 def test_full_run_on_sample_files(plagiarism_dir: Path, tmp_path: Path) -> None:
     out_dir = tmp_path / "out"
     assert main([str(plagiarism_dir), "-o", str(out_dir), "--no-open"]) == 0
+    # The default report is a single self-contained page.
+    assert [p.name for p in out_dir.iterdir()] == ["_results.html"]
+    data = _embedded((out_dir / "_results.html").read_text(encoding="utf-8"))
+    assert [d["name"] for d in data["documents"]][2] == "AI_Healthcare_Overview.docx"
+    assert len(data["pairs"]) == 6
+    # Documents are embedded with their original text, not the lowercase words.
+    assert any(c.isupper() for c in data["documents"][0]["text"])
+
+
+def test_pages_report(plagiarism_dir: Path, tmp_path: Path) -> None:
+    out_dir = tmp_path / "out"
+    assert main([str(plagiarism_dir), "-o", str(out_dir), "--report", "pages", "--no-open"]) == 0
     pages = sorted(p.name for p in out_dir.iterdir())
     # 4 documents: 6 unordered pairs plus the summary page.
     assert len(pages) == 7
@@ -89,7 +111,7 @@ def _write_short_and_long(in_dir: Path) -> None:
 def test_default_score_is_asymmetric_coverage(tmp_path: Path) -> None:
     _write_short_and_long(tmp_path / "in")
     out_dir = tmp_path / "out"
-    assert main([str(tmp_path / "in"), "-o", str(out_dir), "--no-open"]) == 0
+    assert main([str(tmp_path / "in"), "-o", str(out_dir), "--report", "pages", "--no-open"]) == 0
     results = (out_dir / "_results.html").read_text()
     matrix = results.split("Similarity matrix", 1)[1]
     assert re.search(r'a_short\.txt</th><td class="self">-</td><td><a [^>]*>100</a>', matrix)
@@ -101,13 +123,29 @@ def test_default_score_is_asymmetric_coverage(tmp_path: Path) -> None:
 def test_score_ratio_restores_the_symmetric_score(tmp_path: Path) -> None:
     _write_short_and_long(tmp_path / "in")
     out_dir = tmp_path / "out"
-    assert main([str(tmp_path / "in"), "-o", str(out_dir), "--no-open", "--score", "ratio"]) == 0
+    assert main([str(tmp_path / "in"), "-o", str(out_dir), "--no-open", "--score", "ratio", "--report", "pages"]) == 0
     results = (out_dir / "_results.html").read_text()
     scores = re.findall(r'href="0_1.html"[^>]*>([^<]*)<', results)
     assert scores == ["18.182"] * 3  # pair list plus both matrix cells
     page = (out_dir / "0_1.html").read_text()
     assert re.search(r"Similarity: <span[^>]*>18\.182%</span>", page)
     assert "found in" not in page
+
+
+def test_single_page_carries_both_scores(tmp_path: Path) -> None:
+    _write_short_and_long(tmp_path / "in")
+    for mode in ("coverage", "ratio"):
+        out_dir = tmp_path / mode
+        assert main([str(tmp_path / "in"), "-o", str(out_dir), "--no-open", "--score", mode]) == 0
+        data = _embedded((out_dir / "_results.html").read_text(encoding="utf-8"))
+        assert data["score_mode"] == mode
+        pair = data["pairs"][0]
+        assert (pair["coverage_i"], pair["coverage_j"], pair["ratio"]) == (100.0, 10.0, 18.182)
+
+
+def test_invalid_report() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["in", "--report", "zip"])
 
 
 def test_score_option() -> None:

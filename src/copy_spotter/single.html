@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>copy-spotter results</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #222;
+            background: #fff;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .meta, .count {
+            color: #666;
+        }
+
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin: 16px 0;
+        }
+
+        .filters label {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .filters input {
+            font: inherit;
+            padding: 4px 6px;
+        }
+
+        #min-score {
+            width: 6em;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            margin-bottom: 32px;
+        }
+
+        #pairs-wrap {
+            max-height: 60vh;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #f5f5f5;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+        }
+
+        th.name, td.name {
+            text-align: left;
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        td.self {
+            color: #bbb;
+            text-align: center;
+        }
+
+        td.dim a {
+            opacity: 0.25;
+        }
+
+        a {
+            color: #06c;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        a.level-0 {
+            color: green;
+        }
+
+        a.level-1, span.level-1 {
+            color: #b38f00;
+        }
+
+        a.level-2, span.level-2 {
+            color: #cc5200;
+        }
+
+        a.level-3, span.level-3 {
+            color: #990033;
+            font-weight: bold;
+        }
+
+        span.level-0 {
+            color: green;
+        }
+
+        #comparison header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 16px;
+            padding: 12px 20px 0;
+        }
+
+        #comparison .score {
+            font-weight: bold;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 20px 20px;
+        }
+
+        .content {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow: auto;
+            height: 85vh;
+            line-height: 1.5;
+        }
+
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            overflow-wrap: anywhere;
+        }
+
+        .text {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .match {
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        @media (max-width: 800px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .content {
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+<main id="overview">
+    <h1>copy-spotter results</h1>
+    <p class="meta" id="meta"></p>
+
+    <div class="filters">
+        <label>Minimum score (%) <input type="number" id="min-score" min="0" max="100" step="any" value="0"></label>
+        <label>Document name <input type="search" id="name-filter" placeholder="part of a name"></label>
+        <span class="count" id="pair-count"></span>
+    </div>
+
+    <h2>Most similar pairs</h2>
+    <div class="table-wrap" id="pairs-wrap">
+        <table>
+            <thead><tr id="pairs-head"></tr></thead>
+            <tbody id="pairs"></tbody>
+        </table>
+    </div>
+
+    <h2>Similarity matrix</h2>
+    <p class="meta" id="matrix-legend"></p>
+    <div class="table-wrap">
+        <table id="matrix"></table>
+    </div>
+</main>
+
+<section id="comparison" hidden>
+    <header>
+        <a href="#">&larr; All results</a>
+        <span class="score" id="pair-score"></span>
+        <span class="count" id="pair-blocks"></span>
+    </header>
+    <div class="container">
+        <div class="content" id="left"></div>
+        <div class="content" id="right"></div>
+    </div>
+</section>
+
+<script type="application/json" id="report-data">{{data}}</script>
+<script>
+(function () {
+    "use strict";
+
+    // Shape documented in copy_spotter.single_page.report_data.
+    const data = JSON.parse(document.getElementById("report-data").textContent);
+    const docs = data.documents;
+    const pairs = data.pairs;
+    const ratioMode = data.score_mode === "ratio";
+
+    function el(tag, text, className) {
+        const node = document.createElement(tag);
+        if (text !== undefined) node.textContent = text;
+        if (className) node.className = className;
+        return node;
+    }
+
+    function level(score) {
+        let n = 0;
+        for (const t of data.thresholds) {
+            if (score > t) n += 1;
+        }
+        return n;
+    }
+
+    function blockColor(k) {
+        const hue = (k * 137.508) % 360;  // same golden-angle colors as the multi-page report
+        return "hsl(" + Math.round(hue) + ", 75%, 35%)";
+    }
+
+    // Scores shown for (i found in j, j found in i): both are the ratio in ratio mode.
+    function shown(p) {
+        return ratioMode ? [p.ratio, p.ratio] : [p.coverage_i, p.coverage_j];
+    }
+
+    function best(p) {
+        return Math.max.apply(null, shown(p));
+    }
+
+    function pairHash(p) {
+        return "#pair-" + p.i + "-" + p.j;
+    }
+
+    function scoreLink(p, score) {
+        const a = el("a", score + "", "level-" + level(score));
+        a.href = pairHash(p);
+        a.title = docs[p.i].name + " vs " + docs[p.j].name;
+        return a;
+    }
+
+    function scoreSpan(score) {
+        return el("span", score + "%", "level-" + level(score));
+    }
+
+    function nameCell(tag, name) {
+        const cell = el(tag, name, "name");
+        cell.title = name;
+        return cell;
+    }
+
+    // Fill `target` with the document's original text, wrapping each [start, size, block] word range in a
+    // colored span from its first word's first character to its last word's last character. Ranges may come
+    // in any order; a range overlapping an earlier one is trimmed (same rules as report.highlight).
+    function renderDoc(target, doc, ranges, side, other) {
+        const text = el("div", undefined, "text");
+        target.replaceChildren(el("h3", doc.name), text);
+        ranges.sort(function (x, y) { return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]; });
+        let cursor = 0;
+        let nextWord = 0;
+        for (const [start, size, k] of ranges) {
+            const first = Math.max(start, nextWord);
+            const stop = start + size;
+            if (first >= stop) continue;
+            const begin = doc.spans[first][0];
+            const end = doc.spans[stop - 1][1];
+            nextWord = stop;
+            text.appendChild(document.createTextNode(doc.text.slice(cursor, begin)));
+            const span = el("span", doc.text.slice(begin, end), "match");
+            span.style.color = blockColor(k);
+            span.id = side + "-" + k;
+            span.title = "Block " + (k + 1) + ", click to find it in the other document";
+            span.addEventListener("click", function () {
+                const twin = document.getElementById(other + "-" + k);
+                if (twin) twin.scrollIntoView({block: "center"});
+            });
+            text.appendChild(span);
+            cursor = end;
+        }
+        text.appendChild(document.createTextNode(doc.text.slice(cursor)));
+    }
+
+    function showComparison(p) {
+        const left = docs[p.i];
+        const right = docs[p.j];
+        const scores = shown(p);
+        const header = document.getElementById("pair-score");
+        if (ratioMode) {
+            header.replaceChildren("Similarity: ", scoreSpan(scores[0]));
+        } else {
+            header.replaceChildren(
+                left.name + " found in " + right.name + ": ", scoreSpan(scores[0]),
+                " \u00b7 " + right.name + " found in " + left.name + ": ", scoreSpan(scores[1])
+            );
+        }
+        document.getElementById("pair-blocks").textContent = p.blocks.length + " matching blocks";
+        renderDoc(document.getElementById("left"), left, p.blocks.map(function (b, k) { return [b[0], b[2], k]; }), "l", "r");
+        renderDoc(document.getElementById("right"), right, p.blocks.map(function (b, k) { return [b[1], b[2], k]; }), "r", "l");
+        document.title = left.name + " vs " + right.name;
+        document.getElementById("overview").hidden = true;
+        document.getElementById("comparison").hidden = false;
+        window.scrollTo(0, 0);
+    }
+
+    function showOverview() {
+        document.title = "copy-spotter results";
+        document.getElementById("comparison").hidden = true;
+        document.getElementById("overview").hidden = false;
+    }
+
+    // Pairs sorted by their highest shown score.
+    const pairsHead = document.getElementById("pairs-head");
+    if (ratioMode) {
+        pairsHead.append(el("th", "Similarity"), el("th", "Document", "name"), el("th", "Document", "name"));
+        document.getElementById("matrix-legend").textContent = "Symmetric similarity ratio (%) of each pair of documents.";
+    } else {
+        const aInB = el("th", "A in B");
+        aInB.title = "% of A found in B";
+        const bInA = el("th", "B in A");
+        bInA.title = "% of B found in A";
+        pairsHead.append(aInB, bInA, el("th", "Document A", "name"), el("th", "Document B", "name"));
+        document.getElementById("matrix-legend").textContent = "Each cell is the % of the row document found in the column document.";
+    }
+    const pairRows = [];
+    const tbody = document.getElementById("pairs");
+    pairs.slice().sort(function (x, y) { return best(y) - best(x); }).forEach(function (p) {
+        const row = el("tr");
+        const scores = ratioMode ? shown(p).slice(0, 1) : shown(p);
+        for (const score of scores) {
+            const cell = el("td");
+            cell.appendChild(scoreLink(p, score));
+            row.appendChild(cell);
+        }
+        row.append(nameCell("td", docs[p.i].name), nameCell("td", docs[p.j].name));
+        tbody.appendChild(row);
+        pairRows.push({row: row, pair: p});
+    });
+
+    // Matrix: the cell at row i, column j is the score of i found in j.
+    const byCell = new Map();
+    for (const p of pairs) {
+        const scores = shown(p);
+        byCell.set(p.i + "," + p.j, {pair: p, score: scores[0]});
+        byCell.set(p.j + "," + p.i, {pair: p, score: scores[1]});
+    }
+    const matrix = document.getElementById("matrix");
+    const head = el("tr");
+    head.appendChild(el("th", "", "name"));
+    docs.forEach(function (d) { head.appendChild(nameCell("th", d.name)); });
+    matrix.appendChild(head);
+    const matrixRows = [];
+    const matrixCells = [];
+    docs.forEach(function (d, i) {
+        const row = el("tr");
+        row.appendChild(nameCell("th", d.name));
+        docs.forEach(function (_, j) {
+            const entry = byCell.get(i + "," + j);
+            if (i === j || !entry) {
+                row.appendChild(el("td", "-", "self"));
+                return;
+            }
+            const cell = el("td");
+            cell.appendChild(scoreLink(entry.pair, entry.score));
+            row.appendChild(cell);
+            matrixCells.push({cell: cell, score: entry.score});
+        });
+        matrix.appendChild(row);
+        matrixRows.push(row);
+    });
+
+    // Filters.
+    const minInput = document.getElementById("min-score");
+    const nameInput = document.getElementById("name-filter");
+
+    function applyFilters() {
+        const min = parseFloat(minInput.value) || 0;
+        const needle = nameInput.value.trim().toLowerCase();
+        const matches = docs.map(function (d) { return !needle || d.name.toLowerCase().includes(needle); });
+        let visibleCount = 0;
+        for (const item of pairRows) {
+            const visible = best(item.pair) >= min && (matches[item.pair.i] || matches[item.pair.j]);
+            item.row.hidden = !visible;
+            if (visible) visibleCount += 1;
+        }
+        document.getElementById("pair-count").textContent = "Showing " + visibleCount + " of " + pairs.length + " pairs";
+        matrixRows.forEach(function (row, i) { row.hidden = !matches[i]; });
+        for (const item of matrixCells) item.cell.classList.toggle("dim", item.score < min);
+    }
+
+    minInput.addEventListener("input", applyFilters);
+    nameInput.addEventListener("input", applyFilters);
+
+    // Navigation: the URL hash selects a pair, so links and the back button work.
+    function route() {
+        const m = /^#pair-(\d+)-(\d+)$/.exec(location.hash);
+        const entry = m && byCell.get(m[1] + "," + m[2]);
+        if (entry) showComparison(entry.pair); else showOverview();
+    }
+
+    document.getElementById("meta").textContent = data.meta;
+    applyFilters();
+    window.addEventListener("hashchange", route);
+    route();
+})();
+</script>
+</body>
+</html>
