@@ -33,7 +33,7 @@ Python 3.10 or newer is required.
 
 ```bash
 copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}]
-             [--report {single,pages}] [-r] [--no-open] [-V] in_dir
+             [--report {single,pages}] [--json PATH] [--csv PATH] [-r] [--no-open] [-V] in_dir
 ```
 
 | Argument | Description |
@@ -44,6 +44,8 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `--score` | `coverage` (default): percentage of each document found in the other, so a short text fully copied into a long one scores 100% in that direction. `ratio`: the symmetric similarity ratio of the pair. |
 | `--engine` | Matching algorithm: `shingle` (default) finds copied passages in any order, `difflib` is the legacy in-order matcher. |
 | `--report` | `single` (default): one self-contained `_results.html` file. `pages`: `_results.html` plus one page per pair. |
+| `--json PATH` | Also write the pairs, scores and matching blocks as JSON. |
+| `--csv PATH` | Also write one CSV row per pair. |
 | `-r`, `--recursive` | Also look for documents in subdirectories. |
 | `--no-open` | Do not open the results in a web browser. |
 | `-V`, `--version` | Show the version and exit. |
@@ -63,6 +65,21 @@ copy-spotter data/pdf/plagiarism -s 5 -o results/output
 By default the report is a single file, `_results.html`, that works offline: it lists the pairs sorted by score, the
 similarity matrix, filters on minimum score and document name, and shows any pair side by side with its original text.
 With `--report pages` the results directory holds `_results.html` plus one HTML page per pair; zip it to share it.
+
+### Exports
+
+`--json` and `--csv` write the results in a form other tools can read, with pairs sorted by their highest score in
+the `--score` mode, highest first. Field names are stable; new fields may be added later.
+
+- JSON: `version`, `copy_spotter_version`, `engine`, `score_mode`, `block_size`, `documents` (`index`, `name`,
+  `word_count`) and `pairs` (`document_1`, `document_2`, `index_1`, `index_2`, `coverage_1`, `coverage_2`, `ratio`,
+  `matched_words`, and `blocks` with `start_1`, `start_2`, `size`). `coverage_1` is the % of document 1 found in
+  document 2. Block positions count extracted words from 0.
+- CSV columns: `document_1`, `document_2`, `coverage_1`, `coverage_2`, `ratio`, `matched_words`, `block_count`.
+
+```bash
+copy-spotter data/pdf/plagiarism --json pairs.json --csv pairs.csv --no-open
+```
 
 ## How it works
 

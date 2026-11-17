@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import re
 import shutil
@@ -44,6 +45,22 @@ def test_pages_report(plagiarism_dir: Path, tmp_path: Path) -> None:
     # 4 documents: 6 unordered pairs plus the summary page.
     assert len(pages) == 7
     assert "_results.html" in pages
+
+
+def test_json_and_csv_exports(plagiarism_dir: Path, tmp_path: Path) -> None:
+    json_path, csv_path = tmp_path / "pairs.json", tmp_path / "pairs.csv"
+    args = [str(plagiarism_dir), "-o", str(tmp_path / "out"), "--json", str(json_path), "--csv", str(csv_path)]
+    assert main([*args, "--engine", "difflib", "--no-open"]) == 0
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert (data["engine"], data["score_mode"]) == ("difflib", "coverage")
+    assert len(data["documents"]) == 4
+    assert len(data["pairs"]) == 6
+    assert data["pairs"][0]["blocks"]
+    with csv_path.open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [(r["document_1"], r["document_2"], float(r["coverage_1"]), float(r["ratio"])) for r in rows] == [
+        (p["document_1"], p["document_2"], p["coverage_1"], p["ratio"]) for p in data["pairs"]
+    ]
 
 
 def test_out_dir_is_created(plagiarism_dir: Path, tmp_path: Path) -> None:
