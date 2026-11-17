@@ -70,7 +70,7 @@
     <h2>Most similar pairs</h2>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Similarity</th><th class="name">Document</th><th class="name">Document</th></tr></thead>
+            <thead><tr>{{pairs_head}}</tr></thead>
             <tbody>
 {{pairs}}
             </tbody>
@@ -78,6 +78,7 @@
     </div>
 
     <h2>Similarity matrix</h2>
+    <p class="meta">{{matrix_legend}}</p>
     <div class="table-wrap">
         <table>
 {{matrix}}
