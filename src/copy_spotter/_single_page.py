@@ -4,24 +4,22 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from copy_spotter._compare import PairResult
-from copy_spotter._documents import Document
-from copy_spotter._options import DEFAULT_THRESHOLDS
-from copy_spotter._report import RESULTS_FILENAME, _render, _template
+from copy_spotter._options import DEFAULT_THRESHOLDS, ScoreMode
+from copy_spotter._report import _render, _template
+
+if TYPE_CHECKING:
+    from copy_spotter._results import Results
 
 DATA_VERSION = 1
 
 
 def report_data(
-    names: Sequence[str],
-    documents: Sequence[Document],
-    pairs: Sequence[PairResult],
+    results: Results,
     meta: str = "",
     *,
-    score_mode: str = "coverage",
+    score: ScoreMode = "coverage",
     thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> dict[str, Any]:
     """Return the data embedded in the single page. This is the only place that defines its shape.
@@ -49,22 +47,22 @@ def report_data(
     return {
         "version": DATA_VERSION,
         "meta": meta,
-        "score_mode": score_mode,
+        "score_mode": score,
         "thresholds": list(thresholds),
         "documents": [
-            {"name": name, "text": doc.text, "spans": [list(span) for span in doc.spans]}
-            for name, doc in zip(names, documents, strict=True)
+            {"name": doc.name, "text": doc.text, "spans": [list(span) for span in doc.spans]}
+            for doc in results.documents
         ],
         "pairs": [
             {
                 "i": p.i,
                 "j": p.j,
-                "ratio": p.score,
+                "ratio": p.ratio,
                 "coverage_i": p.coverage_i,
                 "coverage_j": p.coverage_j,
                 "blocks": [[m.a, m.b, m.size] for m in p.blocks],
             }
-            for p in pairs
+            for p in results.pairs
         ],
     }
 
@@ -76,32 +74,12 @@ def script_json(data: Any) -> str:
 
 
 def render_single(
-    names: Sequence[str],
-    documents: Sequence[Document],
-    pairs: Sequence[PairResult],
+    results: Results,
     meta: str = "",
     *,
-    score_mode: str = "coverage",
+    score: ScoreMode = "coverage",
     thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> str:
     """Return the self-contained report page (no external resources, works from ``file://``)."""
-    data = report_data(names, documents, pairs, meta, score_mode=score_mode, thresholds=thresholds)
+    data = report_data(results, meta, score=score, thresholds=thresholds)
     return _render(_template("single.html"), data=script_json(data))
-
-
-def write_single_report(
-    out_dir: Path,
-    names: Sequence[str],
-    documents: Sequence[Document],
-    pairs: Sequence[PairResult],
-    meta: str = "",
-    *,
-    score_mode: str = "coverage",
-    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
-) -> Path:
-    """Write the single-page report into ``out_dir`` and return its path."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / RESULTS_FILENAME
-    page = render_single(names, documents, pairs, meta, score_mode=score_mode, thresholds=thresholds)
-    path.write_text(page, encoding="utf-8")
-    return path

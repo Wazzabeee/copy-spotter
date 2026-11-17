@@ -7,21 +7,44 @@ import sys
 import webbrowser
 from collections.abc import Sequence
 from datetime import datetime
-from itertools import combinations
 from pathlib import Path
+from typing import NoReturn
 
 from tqdm import tqdm
 
-from copy_spotter._compare import PairResult
-from copy_spotter._documents import Document, find_documents
+from copy_spotter._compare import compare_documents
+from copy_spotter._documents import Skipped, load_directory
 from copy_spotter._errors import CopySpotterError
-from copy_spotter._export import write_csv, write_json
 from copy_spotter._options import DEFAULT_THRESHOLDS, REPORT_LAYOUTS, SCORE_MODES, check_block_size, check_thresholds
-from copy_spotter._report import write_report
-from copy_spotter._single_page import write_single_report
+from copy_spotter._progress import Progress
 from copy_spotter._version import __version__
 from copy_spotter.extract import SUPPORTED_EXTENSIONS
-from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, compare, coverage
+from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES
+
+_STAGE_DESCRIPTIONS = {"read": "Reading files", "compare": "Comparing files"}
+
+
+class TqdmProgress:
+    """Show progress events as one tqdm bar per stage (hidden when stderr is not a terminal)."""
+
+    def __init__(self) -> None:
+        self._bars: dict[str, tqdm[NoReturn]] = {}
+
+    def __call__(self, event: Progress) -> None:
+        bar = self._bars.get(event.stage)
+        if bar is None:
+            bar = self._bars[event.stage] = tqdm(total=event.total, desc=_STAGE_DESCRIPTIONS[event.stage], disable=None)
+        bar.update(event.done - bar.n)
+        if event.done == event.total:
+            bar.close()
+
+
+def _warn_skipped(skipped: Skipped) -> None:
+    if skipped.reason == "empty":
+        print(f"Warning: skipping {skipped.name}: no text found (empty file or scanned PDF?)", file=sys.stderr)
+    else:
+        error = skipped.error.__cause__ or skipped.error if skipped.error is not None else None
+        print(f"Warning: skipping {skipped.name}: could not read it ({error})", file=sys.stderr)
 
 
 def parse_thresholds(text: str) -> tuple[float, float, float]:
@@ -114,57 +137,32 @@ def run(args: argparse.Namespace) -> Path:
 
     out_dir: Path = (args.out_dir or Path("results") / datetime.now().strftime("%Y%m%d_%H%M%S")).resolve()
 
-    paths = find_documents(in_dir, recursive=args.recursive, exclude=out_dir)
-    names, texts, documents = [], [], []
-    for path in tqdm(paths, desc="Reading files", disable=None):
-        name = path.relative_to(in_dir).as_posix()
-        try:
-            document = Document.from_path(path, name=name)
-        except Exception as exc:  # a corrupt file should not stop the whole run
-            print(f"Warning: skipping {name}: could not read it ({exc.__cause__ or exc})", file=sys.stderr)
-            continue
-        if not document.words:
-            print(f"Warning: skipping {name}: no text found (empty file or scanned PDF?)", file=sys.stderr)
-            continue
-        names.append(name)
-        texts.append(list(document.words))
-        documents.append(document)
-
-    if len(texts) < 2:
+    progress = TqdmProgress()
+    documents = load_directory(
+        in_dir, recursive=args.recursive, exclude=out_dir, on_skip=_warn_skipped, progress=progress
+    )
+    if len(documents) < 2:
         raise CopySpotterError(
-            f"Need at least two readable documents in {in_dir}, found {len(texts)}. "
+            f"Need at least two readable documents in {in_dir}, found {len(documents)}. "
             f"Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}"
         )
-
-    pairs = []
-    for i, j in tqdm(list(combinations(range(len(texts)), 2)), desc="Comparing files", disable=None):
-        score, blocks = compare(texts[i], texts[j], args.block_size, args.engine)
-        coverage_i, coverage_j = coverage(blocks, len(texts[i]), len(texts[j]))
-        pairs.append(PairResult(i, j, score, blocks, coverage_i, coverage_j))
+    results = compare_documents(documents, block_size=args.block_size, engine=args.engine, progress=progress)
 
     meta = (
-        f"{len(names)} documents from {in_dir.name}/, minimum block size {args.block_size}, "
+        f"{len(documents)} documents from {in_dir.name}/, minimum block size {args.block_size}, "
         f"{args.engine} engine, {args.score} score, copy-spotter {__version__}"
     )
     if args.json_path is not None:
-        json_path = write_json(
-            args.json_path.resolve(),
-            names,
-            documents,
-            pairs,
-            block_size=args.block_size,
-            engine=args.engine,
-            score_mode=args.score,
-            thresholds=args.thresholds,
-        )
+        json_path: Path = args.json_path.resolve()
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(results.to_json(score=args.score, thresholds=args.thresholds), encoding="utf-8")
         print(f"JSON saved at: {json_path}")
     if args.csv_path is not None:
-        print(f"CSV saved at: {write_csv(args.csv_path.resolve(), names, pairs, score_mode=args.score)}")
-    if args.report == "pages":
-        return write_report(out_dir, names, documents, pairs, meta, score_mode=args.score, thresholds=args.thresholds)
-    return write_single_report(
-        out_dir, names, documents, pairs, meta, score_mode=args.score, thresholds=args.thresholds
-    )
+        csv_path: Path = args.csv_path.resolve()
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text(results.to_csv(score=args.score), encoding="utf-8", newline="")
+        print(f"CSV saved at: {csv_path}")
+    return results.save(out_dir, report=args.report, score=args.score, thresholds=args.thresholds, meta=meta)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
-from copy_spotter._errors import DocumentReadError
+from copy_spotter._errors import CopySpotterError, DocumentReadError
+from copy_spotter._progress import ProgressCallback, emit
 from copy_spotter.extract import clean_text, format_of, is_supported, read_text, tokenize_with_offsets
 
 
@@ -99,3 +102,68 @@ def find_documents(directory: str | Path, *, recursive: bool = False, exclude: s
             continue
         documents.append(path)
     return sorted(documents)
+
+
+@dataclass(frozen=True)
+class Skipped:
+    """A file that :func:`load_directory` left out.
+
+    Attributes:
+        name: The file's path relative to the directory, with ``/`` separators.
+        reason: ``"unreadable"`` (see ``error``) or ``"empty"`` (no words, for instance a scanned PDF).
+        error: Why the file could not be read: a :class:`DocumentReadError` whose ``__cause__`` is the parser
+            error, or an ``OSError``. ``None`` for empty files.
+    """
+
+    name: str
+    reason: Literal["unreadable", "empty"]
+    error: Exception | None = None
+
+
+def load_directory(
+    directory: str | Path,
+    *,
+    recursive: bool = False,
+    exclude: str | Path | None = None,
+    on_skip: Callable[[Skipped], None] | None = None,
+    progress: ProgressCallback | None = None,
+) -> list[Document]:
+    """Read every supported document of a directory.
+
+    Hidden files and files in other formats are ignored. Files that cannot be read and files without any word
+    are left out and reported to ``on_skip``, so one corrupt file does not stop the run.
+
+    Args:
+        directory: The directory to read.
+        recursive: Also read the documents of subdirectories.
+        exclude: Leave out the files under this path (for instance an output directory inside ``directory``).
+        on_skip: Called with a :class:`Skipped` for each file left out.
+        progress: Called with a :class:`Progress` event (stage ``"read"``) before the first file and after each
+            file.
+
+    Returns:
+        The documents, sorted by path. Each is named by its path relative to ``directory``, with ``/``.
+
+    Raises:
+        NotADirectoryError: ``directory`` is not a directory.
+    """
+    root = Path(directory).resolve()
+    if not root.is_dir():
+        raise NotADirectoryError(f"Not a directory: {directory}")
+    paths = find_documents(root, recursive=recursive, exclude=exclude)
+    documents = []
+    emit(progress, "read", 0, len(paths))
+    for done, path in enumerate(paths, 1):
+        name = path.relative_to(root).as_posix()
+        try:
+            document = Document.from_path(path, name=name)
+        except (OSError, CopySpotterError) as exc:
+            if on_skip is not None:
+                on_skip(Skipped(name, "unreadable", exc))
+        else:
+            if document.words:
+                documents.append(document)
+            elif on_skip is not None:
+                on_skip(Skipped(name, "empty"))
+        emit(progress, "read", done, len(paths))
+    return documents
