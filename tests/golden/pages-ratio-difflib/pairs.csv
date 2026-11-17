@@ -1,0 +1,11 @@
+document_1,document_2,coverage_1,coverage_2,ratio,matched_words,block_count
+long.txt,short.txt,17.083,100.0,29.181,41,1
+essay.docx,long.txt,25.0,11.667,17.045,28,3
+long.txt,notes.odt,7.5,40.0,15.439,18,3
+essay.docx,notes.odt,6.25,15.556,12.739,7,1
+notes.odt,refrain.txt,15.556,7.955,10.526,7,2
+refrain.txt,short.txt,0.0,0.0,3.101,0,0
+essay.docx,short.txt,0.0,0.0,2.614,0,0
+notes.odt,short.txt,0.0,0.0,2.326,0,0
+essay.docx,refrain.txt,0.0,0.0,2.0,0,0
+long.txt,refrain.txt,0.0,0.0,1.829,0,0
