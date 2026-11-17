@@ -83,6 +83,43 @@ the `--score` mode, highest first. Field names are stable; new fields may be add
 copy-spotter data/pdf/plagiarism --json pairs.json --csv pairs.csv --no-open
 ```
 
+## Python API
+
+Everything the command does is available from Python, without touching the filesystem if you do not want to:
+documents can be read from bytes and every report is available as a string.
+
+```python
+from copy_spotter import Document, compare_documents, load_directory
+
+# Read every supported file of a directory; documents are named by their path relative to it.
+documents = load_directory("data/pdf/plagiarism")
+
+# Documents can also come from memory: the bytes of a pdf, docx, odt or txt file, or plain text.
+documents.append(Document.from_text("Artificial intelligence is transforming healthcare.", "note.txt"))
+
+results = compare_documents(documents, block_size=3)
+
+# Pairs sorted by their higher score, highest first. coverage_i is the % of document i found in document j.
+for pair in results.ranked()[:3]:
+    a, b = results.documents[pair.i], results.documents[pair.j]
+    print(f"{a.name} / {b.name}: {pair.coverage_i:.1f}% / {pair.coverage_j:.1f}%, {len(pair.blocks)} blocks")
+
+# Render as strings, or write the HTML report like the command does.
+html = results.to_html(score="ratio", thresholds=(10, 20, 30))
+data = results.to_dict()
+report = results.save("results/api", report="pages")
+```
+
+- `Document.from_path(path)`, `Document.from_bytes(data, name, format=None)` and `Document.from_text(text, name)`
+  build a document; a `Document` holds its `name`, display `text`, lowercase `words` and the `spans` of the words.
+- `compare_documents(documents, block_size=2, engine="shingle", progress=None)` returns `Results`: the documents and
+  one `Pair` per pair (`i`, `j`, `coverage_i`, `coverage_j`, `ratio`, matching `blocks`).
+- `Results.ranked(score)`, `pair(a, b)`, `to_dict`, `to_json`, `to_csv`, `to_html`, `to_html_pages` and `save` take
+  the score mode and thresholds when rendering, so one comparison can be shown several ways.
+- `load_directory(directory, recursive=False, on_skip=None, progress=None)` reports skipped files to `on_skip`;
+  `progress` receives `Progress(stage, done, total)` events. Errors derive from `CopySpotterError`:
+  `UnsupportedFormatError` and `DocumentReadError` (from `Document.from_bytes` and `from_path`).
+
 ## How it works
 
 1. Text is extracted from each document and split into lowercase words.

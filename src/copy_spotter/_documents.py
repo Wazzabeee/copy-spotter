@@ -87,9 +87,15 @@ class Document:
 
 
 def find_documents(directory: str | Path, *, recursive: bool = False, exclude: str | Path | None = None) -> list[Path]:
-    """Return the supported, non-hidden files of ``directory``, sorted by path.
+    """Return the files of a directory that copy-spotter can read.
 
-    Files under ``exclude`` (for instance the output directory) are left out.
+    Args:
+        directory: The directory to look into.
+        recursive: Also look into subdirectories.
+        exclude: Leave out the files under this path (for instance an output directory inside ``directory``).
+
+    Returns:
+        The non-hidden files with a supported extension (case-insensitive), sorted by path.
     """
     directory = Path(directory)
     excluded = None if exclude is None else Path(exclude).resolve()
