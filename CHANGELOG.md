@@ -16,7 +16,6 @@
 - Comparison pages show each document's original text, with its case, punctuation and paragraph breaks, and the
   matching passages highlighted in place. Lines that a PDF breaks in the middle of a paragraph are joined. Matching
   and scores are unchanged.
-- New `extract_document()` returns the display text, the words and the position of each word in the text.
 - The report is now a single self-contained `_results.html` file (no external resources, works offline) with the
   sorted pairs, the matrix, filters on minimum score and document name, and a side-by-side view of any pair with its
   original text. `--report pages` keeps the multi-page output: a summary page plus one page per pair.
@@ -24,6 +23,11 @@
   blocks in JSON, with the engine and score mode of the run; one row per pair in CSV.
 - `--thresholds LOW,MEDIUM,HIGH` sets the percentages at which the shown score (coverage or ratio) turns yellow,
   orange and red (default `5,10,15`, previously hardcoded).
+- Python API: `load_directory()`, `Document.from_path()`, `from_bytes()` and `from_text()` read documents (from
+  memory too), `compare_documents()` compares them and returns `Results`, which renders the HTML report, JSON and
+  CSV as strings or saves them, with the score mode and thresholds chosen at render time. Progress callbacks,
+  typed errors (`CopySpotterError`) and type hints (`py.typed`) included. See the README.
+- Importing copy-spotter no longer loads the PDF and ODT parsers; they are imported when such a file is read.
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at
