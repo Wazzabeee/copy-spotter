@@ -17,6 +17,9 @@
   matching passages highlighted in place. Lines that a PDF breaks in the middle of a paragraph are joined. Matching
   and scores are unchanged.
 - New `extract_document()` returns the display text, the words and the position of each word in the text.
+- The report is now a single self-contained `_results.html` file (no external resources, works offline) with the
+  sorted pairs, the matrix, filters on minimum score and document name, and a side-by-side view of any pair with its
+  original text. `--report pages` keeps the multi-page output: a summary page plus one page per pair.
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at

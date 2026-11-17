@@ -32,8 +32,8 @@ Python 3.10 or newer is required.
 ## Usage
 
 ```bash
-copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}] [-r]
-             [--no-open] [-V] in_dir
+copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}]
+             [--report {single,pages}] [-r] [--no-open] [-V] in_dir
 ```
 
 | Argument | Description |
@@ -43,6 +43,7 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `-s`, `--block-size` | Minimum number of consecutive identical words to highlight. Default: 2. |
 | `--score` | `coverage` (default): percentage of each document found in the other, so a short text fully copied into a long one scores 100% in that direction. `ratio`: the symmetric similarity ratio of the pair. |
 | `--engine` | Matching algorithm: `shingle` (default) finds copied passages in any order, `difflib` is the legacy in-order matcher. |
+| `--report` | `single` (default): one self-contained `_results.html` file. `pages`: `_results.html` plus one page per pair. |
 | `-r`, `--recursive` | Also look for documents in subdirectories. |
 | `--no-open` | Do not open the results in a web browser. |
 | `-V`, `--version` | Show the version and exit. |
@@ -59,7 +60,9 @@ copy-spotter data/pdf/plagiarism
 copy-spotter data/pdf/plagiarism -s 5 -o results/output
 ```
 
-The results directory is self-contained: open `_results.html`, or zip the folder and share it.
+By default the report is a single file, `_results.html`, that works offline: it lists the pairs sorted by score, the
+similarity matrix, filters on minimum score and document name, and shows any pair side by side with its original text.
+With `--report pages` the results directory holds `_results.html` plus one HTML page per pair; zip it to share it.
 
 ## How it works
 
