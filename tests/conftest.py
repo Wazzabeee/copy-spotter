@@ -5,6 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from copy_spotter._documents import Document
+from copy_spotter.extract import tokenize_with_offsets
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 PLAGIARISM_DIR = DATA_DIR / "pdf" / "plagiarism"
 
@@ -28,6 +31,12 @@ def make_docx(path: Path, paragraphs: list[str]) -> Path:
         archive.writestr("[Content_Types].xml", _DOCX_CONTENT_TYPES)
         archive.writestr("word/document.xml", document)
     return path
+
+
+def make_document(text: str, name: str = "doc.txt") -> Document:
+    """Return a document whose display text is exactly ``text`` (no cleanup)."""
+    words, spans = tokenize_with_offsets(text)
+    return Document(name, text, tuple(words), tuple(spans))
 
 
 @pytest.fixture

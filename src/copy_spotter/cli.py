@@ -13,14 +13,14 @@ from pathlib import Path
 from tqdm import tqdm
 
 from copy_spotter._compare import PairResult
-from copy_spotter._documents import find_documents
+from copy_spotter._documents import Document, find_documents
 from copy_spotter._errors import CopySpotterError
 from copy_spotter._export import write_csv, write_json
 from copy_spotter._options import DEFAULT_THRESHOLDS, REPORT_LAYOUTS, SCORE_MODES, check_block_size, check_thresholds
 from copy_spotter._report import write_report
 from copy_spotter._single_page import write_single_report
 from copy_spotter._version import __version__
-from copy_spotter.extract import SUPPORTED_EXTENSIONS, extract_document
+from copy_spotter.extract import SUPPORTED_EXTENSIONS
 from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, compare, coverage
 
 
@@ -119,15 +119,15 @@ def run(args: argparse.Namespace) -> Path:
     for path in tqdm(paths, desc="Reading files", disable=None):
         name = path.relative_to(in_dir).as_posix()
         try:
-            document = extract_document(path)
+            document = Document.from_path(path, name=name)
         except Exception as exc:  # a corrupt file should not stop the whole run
-            print(f"Warning: skipping {name}: could not read it ({exc})", file=sys.stderr)
+            print(f"Warning: skipping {name}: could not read it ({exc.__cause__ or exc})", file=sys.stderr)
             continue
         if not document.words:
             print(f"Warning: skipping {name}: no text found (empty file or scanned PDF?)", file=sys.stderr)
             continue
         names.append(name)
-        texts.append(document.words)
+        texts.append(list(document.words))
         documents.append(document)
 
     if len(texts) < 2:

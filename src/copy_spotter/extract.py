@@ -1,29 +1,28 @@
-"""Text extraction from pdf, docx, odt and txt files."""
+"""Text extraction from pdf, docx, odt and txt files.
+
+Readers take the file content as bytes, so documents can come from memory as well as from disk. The parsers
+(pdfminer, odfpy) are imported on first use: importing copy-spotter stays fast and only the formats in use load.
+"""
 
 from __future__ import annotations
 
+import io
 import re
 import zipfile
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree
 
-from odf import teletype
-from odf.namespaces import TEXTNS
-from odf.opendocument import load as load_odt
-from pdfminer.high_level import extract_text as extract_pdf_text
-
 from copy_spotter._errors import UnsupportedFormatError
 
-SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".odt", ".txt")
+SUPPORTED_FORMATS = ("pdf", "docx", "odt", "txt")
+SUPPORTED_EXTENSIONS = tuple(f".{fmt}" for fmt in SUPPORTED_FORMATS)
 
 # Encodings tried in order for plain text files. cp1252 is a superset of latin-1 for printable
 # characters and is what most Windows editors produce; latin-1 never fails and acts as last resort.
 _TXT_ENCODINGS = ("utf-8-sig", "cp1252", "latin-1")
 
 _WORD_RE = re.compile(r"\w+")
-_ODT_TEXT_BLOCKS = ((TEXTNS, "p"), (TEXTNS, "h"))
 _W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
@@ -36,15 +35,6 @@ _LIST_MARKER = r"(?:[-*\u2022\u25aa\u25e6\u2023\u2043]|\d+[.)])\s"
 _SOFT_LINE_BREAK_RE = re.compile(rf"(?<=[^\n])\n[^\S\n]*(?=\S)(?!{_LIST_MARKER})")
 
 
-@dataclass(frozen=True)
-class Document:
-    """A document's display text, its lowercase words and the ``(start, end)`` character span of each word."""
-
-    text: str
-    words: list[str]
-    spans: list[tuple[int, int]]
-
-
 def is_supported(path: Path) -> bool:
     """Return True if the file extension is supported (case-insensitive)."""
     return path.suffix.lower() in SUPPORTED_EXTENSIONS
@@ -55,8 +45,8 @@ def tokenize(content: str) -> list[str]:
     return _WORD_RE.findall(content.lower())
 
 
-def tokenize_with_offsets(content: str) -> Document:
-    """Split text into the same words as :func:`tokenize`, keeping each word's span in ``content``."""
+def tokenize_with_offsets(content: str) -> tuple[list[str], list[tuple[int, int]]]:
+    """Split text into the same words as :func:`tokenize` and the ``(start, end)`` span of each word in ``content``."""
     lowered = content.lower()
     # Lowercasing can lengthen a character ("\u0130" becomes "i" plus a combining dot): map positions back.
     index: list[int] | None = None
@@ -69,7 +59,7 @@ def tokenize_with_offsets(content: str) -> Document:
             start, end = index[start], index[end - 1] + 1
         words.append(match.group())
         spans.append((start, end))
-    return Document(content, words, spans)
+    return words, spans
 
 
 def clean_text(content: str, join_lines: bool = False) -> str:
@@ -86,25 +76,40 @@ def clean_text(content: str, join_lines: bool = False) -> str:
     return content.strip()
 
 
-def read_pdf(path: Path) -> str:
+def format_of(name: str, format: str | None = None) -> str:
+    """Return the format (``"pdf"``, ...) given by ``format`` or else by the extension of ``name``.
+
+    Raises:
+        UnsupportedFormatError: the format is not one of :data:`SUPPORTED_FORMATS`.
+    """
+    fmt = (Path(name).suffix if format is None else format).lower().removeprefix(".")
+    if fmt not in SUPPORTED_FORMATS:
+        raise UnsupportedFormatError(
+            f"Unsupported file format: {name}. Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}"
+        )
+    return fmt
+
+
+def read_pdf(data: bytes) -> str:
     """Return the text of a PDF file. Scanned PDFs without a text layer return an empty string."""
-    return str(extract_pdf_text(str(path)))
+    from pdfminer.high_level import extract_text  # noqa: PLC0415 - slow import, only needed for PDFs
+
+    return str(extract_text(io.BytesIO(data)))
 
 
-def read_txt(path: Path) -> str:
+def read_txt(data: bytes) -> str:
     """Return the content of a text file, trying common encodings."""
-    raw = path.read_bytes()
     for encoding in _TXT_ENCODINGS:
         try:
-            return raw.decode(encoding)
+            return data.decode(encoding)
         except UnicodeDecodeError:
             continue
     raise AssertionError("unreachable: latin-1 decodes any byte sequence")  # pragma: no cover
 
 
-def read_docx(path: Path) -> str:
+def read_docx(data: bytes) -> str:
     """Return the text of a DOCX file, one line per paragraph."""
-    with zipfile.ZipFile(path) as archive:
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
         root = ElementTree.fromstring(archive.read("word/document.xml"))
 
     paragraphs = []
@@ -119,54 +124,53 @@ def read_docx(path: Path) -> str:
     return "\n".join(paragraphs)
 
 
-def read_odt(path: Path) -> str:
+def read_odt(data: bytes) -> str:
     """Return the text of an ODT file (headings and paragraphs), one line per block."""
-    document = load_odt(str(path))
+    from odf import teletype  # noqa: PLC0415 - only needed for ODT files
+    from odf.namespaces import TEXTNS  # noqa: PLC0415
+    from odf.opendocument import load  # noqa: PLC0415
+
+    text_blocks = ((TEXTNS, "p"), (TEXTNS, "h"))
+
+    def blocks_of(node: object) -> list[str]:
+        if getattr(node, "qname", None) in text_blocks:
+            return [str(teletype.extractText(node))]
+        blocks: list[str] = []
+        for child in getattr(node, "childNodes", []):
+            blocks.extend(blocks_of(child))
+        return blocks
+
+    document = load(io.BytesIO(data))
     blocks = []
     # Walk the body in document order so headings stay where they belong.
     for node in document.text.childNodes:
-        blocks.extend(_odt_blocks(node))
+        blocks.extend(blocks_of(node))
     return "\n".join(blocks)
 
 
-def _odt_blocks(node: object) -> list[str]:
-    qname = getattr(node, "qname", None)
-    if qname in _ODT_TEXT_BLOCKS:
-        return [str(teletype.extractText(node))]
-    blocks: list[str] = []
-    for child in getattr(node, "childNodes", []):
-        blocks.extend(_odt_blocks(child))
-    return blocks
-
-
-_READERS: dict[str, Callable[[Path], str]] = {
-    ".pdf": read_pdf,
-    ".docx": read_docx,
-    ".odt": read_odt,
-    ".txt": read_txt,
+_READERS: dict[str, Callable[[bytes], str]] = {
+    "pdf": read_pdf,
+    "docx": read_docx,
+    "odt": read_odt,
+    "txt": read_txt,
 }
 
 
+def read_text(data: bytes, format: str) -> str:
+    """Return the raw text of a file of a supported ``format`` (as returned by :func:`format_of`)."""
+    return _READERS[format](data)
+
+
 def extract_text(path: str | Path) -> str:
-    """Return the raw text of a supported document."""
+    """Return the raw text of a supported document on disk."""
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"Not a file: {path}")
-    reader = _READERS.get(path.suffix.lower())
-    if reader is None:
-        raise UnsupportedFormatError(
-            f"Unsupported file format: {path.name}. Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}"
-        )
-    return reader(path)
-
-
-def extract_document(path: str | Path) -> Document:
-    """Return the cleaned text of a supported document with its words and their positions."""
-    path = Path(path)
-    text = clean_text(extract_text(path), join_lines=path.suffix.lower() == ".pdf")
-    return tokenize_with_offsets(text)
+    fmt = format_of(path.name)
+    return read_text(path.read_bytes(), fmt)
 
 
 def extract_words(path: str | Path) -> list[str]:
-    """Return the lowercase words of a supported document."""
-    return extract_document(path).words
+    """Return the lowercase words of a supported document on disk."""
+    path = Path(path)
+    return tokenize(clean_text(extract_text(path), join_lines=format_of(path.name) == "pdf"))

@@ -5,6 +5,7 @@ from html import unescape
 from pathlib import Path
 
 from copy_spotter._compare import PairResult
+from copy_spotter._documents import Document
 from copy_spotter._report import (
     RESULTS_FILENAME,
     block_color,
@@ -14,8 +15,9 @@ from copy_spotter._report import (
     score_style,
     write_report,
 )
-from copy_spotter.extract import Document, tokenize_with_offsets
 from copy_spotter.similarity import Match, compare, coverage
+
+from .conftest import make_document
 
 
 def _highlighted(html: str) -> list[str]:
@@ -23,7 +25,7 @@ def _highlighted(html: str) -> list[str]:
 
 
 def _doc(text: str) -> Document:
-    return tokenize_with_offsets(text)
+    return make_document(text)
 
 
 def test_highlight_wraps_only_the_matched_words() -> None:

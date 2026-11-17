@@ -44,9 +44,9 @@ from pathlib import Path
 from typing import Any
 
 from copy_spotter._compare import PairResult
+from copy_spotter._documents import Document
 from copy_spotter._options import DEFAULT_THRESHOLDS
 from copy_spotter._version import __version__
-from copy_spotter.extract import Document
 
 EXPORT_VERSION = 1
 CSV_FIELDS = ("document_1", "document_2", "coverage_1", "coverage_2", "ratio", "matched_words", "block_count")
