@@ -8,7 +8,7 @@ class CopySpotterError(Exception):
 
 
 class UnsupportedFormatError(CopySpotterError, ValueError):
-    """The format of a file is not one copy-spotter can read (pdf, docx, odt, txt)."""
+    """The format of a file is not one copy-spotter can read (see ``SUPPORTED_FORMATS``)."""
 
 
 class DocumentReadError(CopySpotterError):

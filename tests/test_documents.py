@@ -62,7 +62,7 @@ def test_unsupported_format() -> None:
     with pytest.raises(UnsupportedFormatError, match=r"image\.png.*\.pdf, \.docx, \.odt, \.txt"):
         Document.from_bytes(b"\x89PNG", "image.png")
     with pytest.raises(UnsupportedFormatError):
-        Document.from_bytes(b"text", "notes.txt", format="rtf")
+        Document.from_bytes(b"text", "notes.txt", format="xyz")
     with pytest.raises(ValueError):  # UnsupportedFormatError is a ValueError
         Document.from_bytes(b"text", "no_extension")
 

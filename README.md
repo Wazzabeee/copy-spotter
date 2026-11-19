@@ -9,7 +9,7 @@
 
 ## About
 
-Copy Spotter compares every pair of documents (pdf, docx, odt, txt) found in a directory. It computes a similarity
+Copy Spotter compares every pair of documents (pdf, docx, odt, txt, md, html, rtf, ipynb) found in a directory. It computes a similarity
 score for each pair and writes an HTML report: a list of the most similar pairs, a similarity matrix, and a side by
 side view of each pair where identical passages are highlighted with the same color.
 
@@ -39,7 +39,7 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 
 | Argument | Description |
 | --- | --- |
-| `in_dir` | Directory containing the documents to compare (pdf, docx, odt, txt). |
+| `in_dir` | Directory containing the documents to compare (pdf, docx, odt, txt, md, html, rtf, ipynb). |
 | `-o`, `--out-dir` | Directory for the HTML results. Created if missing. Default: `./results/<timestamp>`. |
 | `-s`, `--block-size` | Minimum number of consecutive identical words to highlight. Default: 2. |
 | `--score` | `coverage` (default): percentage of each document found in the other, so a short text fully copied into a long one scores 100% in that direction. `ratio`: the symmetric similarity ratio of the pair. |
@@ -53,6 +53,21 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `-V`, `--version` | Show the version and exit. |
 
 Empty files and PDFs without a text layer (scanned documents) are skipped with a warning.
+
+### Supported formats
+
+| Format | Extensions | What is compared |
+| --- | --- | --- |
+| PDF | `.pdf` | The text layer. Lines broken in the middle of a paragraph are joined. Scanned PDFs need OCR first. |
+| Word, OpenDocument | `.docx`, `.odt` | Paragraphs and headings. |
+| Plain text | `.txt` | The whole file (UTF-8, cp1252 or latin-1). |
+| Markdown | `.md` | The text as written, without link targets, image paths, inline HTML and `_` emphasis marks. |
+| HTML | `.html`, `.htm` | The visible text: no scripts, styles or page title. HTML files next to a `_results.html` file are a copy-spotter report and are skipped. |
+| Rich Text | `.rtf` | The document text, without fonts, metadata, pictures or field codes. |
+| Jupyter notebook | `.ipynb` | Markdown and code cells; outputs are left out. |
+
+Every format is read with the Python standard library or the two parsers copy-spotter already depends on, so
+`Document.from_bytes` works the same everywhere, including in the browser with Pyodide.
 
 ### Examples
 
@@ -94,7 +109,7 @@ from copy_spotter import Document, compare_documents, load_directory
 # Read every supported file of a directory; documents are named by their path relative to it.
 documents = load_directory("data/pdf/plagiarism")
 
-# Documents can also come from memory: the bytes of a pdf, docx, odt or txt file, or plain text.
+# Documents can also come from memory: the bytes of any supported file, or plain text.
 documents.append(Document.from_text("Artificial intelligence is transforming healthcare.", "note.txt"))
 
 results = compare_documents(documents, block_size=3)

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "copy-spotter"
 dynamic = ["version"]
-description = "Find similar passages between documents (pdf, docx, odt, txt) and highlight them side by side."
+description = "Find similar passages between documents (pdf, docx, odt, txt, md, html, rtf, ipynb) and highlight them side by side."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
