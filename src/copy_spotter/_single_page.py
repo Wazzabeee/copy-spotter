@@ -39,20 +39,25 @@ def report_data(
     }``
 
     ``text`` is the document's display text and ``spans[k]`` the character range of its k-th word.
+    A document may also have ``"excluded": [[start, size, reason], ...]``: word runs left out of the matching
+    (``reason`` is ``"quote"`` or ``"bibliography"``), shown in grey.
     A block ``[a, b, size]`` means words ``a .. a+size-1`` of document ``i`` equal words ``b .. b+size-1``
     of document ``j``; blocks may be in any order on either side. ``coverage_i`` is the percentage of
     document ``i`` found in ``j``, ``coverage_j`` the reverse, ``ratio`` the symmetric score of the engine.
     Fields may be added; the page ignores fields it does not know.
     """
+    documents: list[dict[str, Any]] = [
+        {"name": doc.name, "text": doc.text, "spans": [list(span) for span in doc.spans]} for doc in results.documents
+    ]
+    for document, runs in zip(documents, results.excluded, strict=False):
+        if runs:
+            document["excluded"] = [[run.start, run.size, run.reason] for run in runs]
     return {
         "version": DATA_VERSION,
         "meta": meta,
         "score_mode": score,
         "thresholds": list(thresholds),
-        "documents": [
-            {"name": doc.name, "text": doc.text, "spans": [list(span) for span in doc.spans]}
-            for doc in results.documents
-        ],
+        "documents": documents,
         "pairs": [
             {
                 "i": p.i,
@@ -82,4 +87,11 @@ def render_single(
 ) -> str:
     """Return the self-contained report page (no external resources, works from ``file://``)."""
     data = report_data(results, meta, score=score, thresholds=thresholds)
-    return _render(_template("single.html"), data=script_json(data))
+    return _render(_template("single.html"), data=script_json(data), addon=_addon(data))
+
+
+def _addon(data: dict[str, Any]) -> str:
+    """Return the script of the optional features the report uses, or ``""`` (the page is then unchanged)."""
+    if any("excluded" in document for document in data["documents"]):
+        return _template("single_addon.html")
+    return ""

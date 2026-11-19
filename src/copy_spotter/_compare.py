@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from itertools import combinations
 
 from copy_spotter._documents import Document
+from copy_spotter._exclusions import Excluded, find_exclusions, masked_words
 from copy_spotter._normalize import Normalization, check_normalize, normalize_document
 from copy_spotter._options import ScoreMode, check_block_size
 from copy_spotter._progress import ProgressCallback, emit
@@ -70,6 +71,8 @@ def compare_documents(
     engine: Engine = DEFAULT_ENGINE,
     normalize: Iterable[Normalization] = (),
     stopwords: Iterable[str] = (),
+    ignore_quotes: bool = False,
+    ignore_bibliography: bool = False,
     progress: ProgressCallback | None = None,
 ) -> Results:
     """Compare every pair of documents.
@@ -82,6 +85,11 @@ def compare_documents(
             matches "eleve".
         stopwords: Words left out of the matching, for instance ``stopword_list("en")``: a passage that differs
             only by these words still matches. Stopwords are not counted in the scores.
+        ignore_quotes: Leave the passages between quotation marks (straight, curly, guillemets) out of the
+            matching. They stay in the documents and in the reports, where they are shown in grey.
+        ignore_bibliography: Leave the bibliography out of the matching: the text from the last heading such as
+            "References", "Bibliography" or "Works cited" (on a line of its own, past the first 30% of the
+            text) to the end.
         progress: Called with a :class:`Progress` event (stage ``"compare"``) before the first pair and after
             each pair.
 
@@ -89,6 +97,8 @@ def compare_documents(
         The scores and matching blocks of every pair, in ``itertools.combinations`` order. With ``normalize`` or
         ``stopwords``, ``Results.documents`` holds the normalized documents: same names and text, normalized
         words, and no stopwords in ``words`` and ``spans``, so that blocks index the words that were matched.
+        Excluded passages are listed in ``Results.excluded``; their words never match but still count in the
+        scores, so excluding passages can only lower them.
 
     Raises:
         ValueError: ``block_size`` is below 1, ``engine`` or a normalization is unknown, or two documents have
@@ -111,8 +121,32 @@ def compare_documents(
     if stopword_set:
         options["stopwords"] = len(stopword_set)
 
+    excluded: tuple[tuple[Excluded, ...], ...] = ()
+    if ignore_quotes or ignore_bibliography:
+        excluded = tuple(
+            find_exclusions(d.text, d.spans, quotes=ignore_quotes, bibliography=ignore_bibliography) for d in documents
+        )
+        options.update({"ignore_quotes": True} if ignore_quotes else {})
+        options.update({"ignore_bibliography": True} if ignore_bibliography else {})
+
     words = [list(document.words) for document in documents]
-    indexes = list(combinations(range(len(documents)), 2))
+    if excluded:
+        words = [masked_words(w, k, runs) for k, (w, runs) in enumerate(zip(words, excluded, strict=True))]
+    pairs = _compare_all_pairs(words, block_size, engine, progress)
+    return Results(
+        documents=tuple(documents),
+        pairs=tuple(pairs),
+        block_size=block_size,
+        engine=engine,
+        options=options,
+        excluded=excluded,
+    )
+
+
+def _compare_all_pairs(
+    words: list[list[str]], block_size: int, engine: Engine, progress: ProgressCallback | None
+) -> list[Pair]:
+    indexes = list(combinations(range(len(words)), 2))
     pairs = []
     # One shared index for the whole corpus (shingle engine): same results as compare_pair() on each pair.
     comparisons = compare_all(words, block_size, engine)
@@ -120,6 +154,4 @@ def compare_documents(
     for (i, j), comparison in zip(indexes, comparisons, strict=True):
         pairs.append(_make_pair(i, j, comparison, len(words[i]), len(words[j])))
         emit(progress, "compare", len(pairs), len(indexes))
-    return Results(
-        documents=tuple(documents), pairs=tuple(pairs), block_size=block_size, engine=engine, options=options
-    )
+    return pairs

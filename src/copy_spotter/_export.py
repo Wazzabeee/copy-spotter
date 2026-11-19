@@ -34,8 +34,11 @@ A block means words ``start_1 .. start_1 + size - 1`` of document 1 equal words 
 Blocks are listed in the engine's order and may be out of order on either side.
 
 ``options`` lists the matching options that were turned on and is left out when there are none:
-``"normalize": ["accents"]`` (accents folded) and ``"stopwords": int`` (number of stopwords left out of the
-matching; ``word_count`` and word positions then count the remaining words only).
+``"normalize": ["accents"]`` (accents folded), ``"stopwords": int`` (number of stopwords left out of the
+matching; ``word_count`` and word positions then count the remaining words only), ``"ignore_quotes": true`` and
+``"ignore_bibliography": true``. When passages were excluded from the matching, each document also has
+``"excluded_words": int`` and ``"excluded": [{"start": int, "size": int, "reason": "quote" | "bibliography"}]``:
+excluded words never match but still count in ``word_count`` and the coverages.
 
 CSV columns: ``document_1, document_2, coverage_1, coverage_2, ratio, matched_words, block_count``.
 """
@@ -73,11 +76,15 @@ def export_data(
     }
     if results.options:
         data["options"] = dict(results.options)
+    documents = [
+        {"index": k, "name": document.name, "word_count": len(document.words)}
+        for k, document in enumerate(results.documents)
+    ]
+    for document, runs in zip(documents, results.excluded, strict=False):
+        document["excluded_words"] = sum(run.size for run in runs)
+        document["excluded"] = [{"start": run.start, "size": run.size, "reason": run.reason} for run in runs]
     return data | {
-        "documents": [
-            {"index": k, "name": document.name, "word_count": len(document.words)}
-            for k, document in enumerate(results.documents)
-        ],
+        "documents": documents,
         "pairs": [
             {
                 "document_1": names[p.i],

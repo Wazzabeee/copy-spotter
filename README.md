@@ -41,7 +41,8 @@ Python 3.10 or newer is required.
 
 ```bash
 copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}]
-             [--normalize accents] [--stopwords LANGS_OR_FILE] [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
+             [--normalize accents] [--stopwords LANGS_OR_FILE] [--ignore-quotes] [--ignore-bibliography]
+             [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
              [--no-open] [-V] in_dir
 ```
 
@@ -54,6 +55,8 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `--engine` | Matching algorithm: `shingle` (default) finds copied passages in any order, `difflib` is the legacy in-order matcher. |
 | `--normalize accents` | Ignore accents and ligatures when matching, so `élève` matches `eleve`. |
 | `--stopwords` | Leave common words out of the matching: built-in lists for `en`, `fr`, `es`, `de`, `it`, `pt` (comma separated, for instance `en,fr`), or the path of a text file of words. |
+| `--ignore-quotes` | Leave passages between quotation marks out of the matching. They are shown in grey in the report. |
+| `--ignore-bibliography` | Leave the bibliography (the end of the document after a heading such as References, Bibliography or Works cited) out of the matching. |
 | `--report` | `single` (default): one self-contained `_results.html` file. `pages`: `_results.html` plus one page per pair. |
 | `--json PATH` | Also write the pairs, scores and matching blocks as JSON. |
 | `--csv PATH` | Also write one CSV row per pair. |
@@ -78,6 +81,22 @@ By default words must be identical, apart from case and punctuation. Two options
 The report still shows the original text: a block is highlighted from its first to its last word, stopwords
 included. The options in use are listed under the title of the report and in the `options` field of the JSON export.
 Stemming (matching `copied` with `copying`) is not supported.
+
+### Quotations and bibliographies
+
+Quoting a source is not copying it. Two options leave such passages out of the matching, both off by default:
+
+- `--ignore-quotes`: text between quotation marks: `"..."`, `“...”`, `„...“`, `«...»`, `»...«` and `「...」`. Single
+  quotes are not used because they are also apostrophes. A quotation must close in the paragraph where it opens, so a
+  stray quotation mark cannot hide the rest of a document.
+- `--ignore-bibliography`: the text from the last heading such as `References`, `Bibliography`, `Works cited`,
+  `Bibliographie`, `Referencias` or `Literaturverzeichnis` (alone on its line, optionally numbered, past the first 30%
+  of the document) to the end. In PDF text where the heading was joined to the first entry, an entry starting with
+  `[1]`, `1.` or `Surname,` is recognized too.
+
+Excluded passages stay in the report, in grey, but their words never match, so copied passages stop where a quotation
+starts. They still count in the length of the document: excluding passages can only lower a score. The JSON export
+lists them per document (`excluded_words`, and `excluded` runs with `start`, `size` and `reason`).
 
 ### Supported formats
 
@@ -153,10 +172,12 @@ report = results.save("results/api", report="pages")
 
 - `Document.from_path(path)`, `Document.from_bytes(data, name, format=None)` and `Document.from_text(text, name)`
   build a document; a `Document` holds its `name`, display `text`, lowercase `words` and the `spans` of the words.
-- `compare_documents(documents, block_size=2, engine="shingle", normalize=(), stopwords=(), progress=None)` returns
+- `compare_documents(documents, block_size=2, engine="shingle", normalize=(), stopwords=(), ignore_quotes=False,
+  ignore_bibliography=False, progress=None)` returns
   `Results`: the documents and one `Pair` per pair (`i`, `j`, `coverage_i`, `coverage_j`, `ratio`, matching
   `blocks`). `normalize=["accents"]` and `stopwords=stopword_list("en", "fr")` are the `--normalize` and
-  `--stopwords` options; `Results.options` records them.
+  `--stopwords` options; `ignore_quotes=True` and `ignore_bibliography=True` the exclusion options. `Results.options`
+  records the options in use and `Results.excluded` the excluded word runs of each document.
 - `Results.ranked(score)`, `pair(a, b)`, `to_dict`, `to_json`, `to_csv`, `to_html`, `to_html_pages` and `save` take
   the score mode and thresholds when rendering, so one comparison can be shown several ways.
 - `load_directory(directory, recursive=False, on_skip=None, progress=None)` reports skipped files to `on_skip`;

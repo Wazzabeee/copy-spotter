@@ -1,0 +1,68 @@
+<style>
+    .excluded {
+        color: #8c8c8c;
+    }
+</style>
+<script>
+(function () {
+    "use strict";
+
+    // Optional features of the single page, included only when the report uses them, so that reports without
+    // them stay exactly as they were. Runs after the main script and adjusts what it rendered.
+    const data = JSON.parse(document.getElementById("report-data").textContent);
+    const docs = data.documents;
+    const titles = {
+        quote: "Quotation: left out of the matching",
+        bibliography: "Bibliography: left out of the matching",
+    };
+
+    // Grey the passages left out of the matching. The text container holds the document text in order, split
+    // into text nodes and match spans; excluded words never match, so they are only found in plain text nodes.
+    function greyExcluded(container, doc) {
+        const ranges = (doc.excluded || []).map(function (run) {
+            return [doc.spans[run[0]][0], doc.spans[run[0] + run[1] - 1][1], run[2]];
+        });
+        if (!container || !ranges.length) return;
+        const nodes = [];
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        let offset = 0;
+        for (const node of nodes) {
+            const start = offset;
+            const end = offset + node.data.length;
+            offset = end;
+            if (node.parentNode !== container) continue;
+            const pieces = [];
+            for (const [a, b, reason] of ranges) {
+                const x = Math.max(a, start);
+                const y = Math.min(b, end);
+                if (x < y) pieces.push([x - start, y - start, reason]);
+            }
+            if (!pieces.length) continue;
+            const fragment = document.createDocumentFragment();
+            let pos = 0;
+            for (const [x, y, reason] of pieces) {
+                fragment.append(node.data.slice(pos, x));
+                const span = document.createElement("span");
+                span.className = "excluded";
+                span.title = titles[reason] || "Left out of the matching";
+                span.textContent = node.data.slice(x, y);
+                fragment.append(span);
+                pos = y;
+            }
+            fragment.append(node.data.slice(pos));
+            node.replaceWith(fragment);
+        }
+    }
+
+    function update() {
+        const m = /^#pair-(\d+)-(\d+)$/.exec(location.hash);
+        if (!m || document.getElementById("comparison").hidden) return;
+        greyExcluded(document.querySelector("#left .text"), docs[+m[1]]);
+        greyExcluded(document.querySelector("#right .text"), docs[+m[2]]);
+    }
+
+    window.addEventListener("hashchange", update);
+    update();
+})();
+</script>
