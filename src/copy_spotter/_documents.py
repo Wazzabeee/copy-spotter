@@ -9,7 +9,10 @@ from typing import Literal
 
 from copy_spotter._errors import CopySpotterError, DocumentReadError
 from copy_spotter._progress import ProgressCallback, emit
+from copy_spotter._report import RESULTS_FILENAME
 from copy_spotter.extract import clean_text, format_of, is_supported, read_text, tokenize_with_offsets
+
+_HTML_SUFFIXES = (".html", ".htm")
 
 
 @dataclass(frozen=True)
@@ -47,13 +50,13 @@ class Document:
 
     @classmethod
     def from_bytes(cls, data: bytes, name: str, *, format: str | None = None) -> Document:
-        """Read a pdf, docx, odt or txt file held in memory.
+        """Read a supported file held in memory (see :data:`SUPPORTED_FORMATS`).
 
         Args:
             data: The content of the file.
             name: The name of the document in reports, usually its file name.
-            format: ``"pdf"``, ``"docx"``, ``"odt"`` or ``"txt"`` (case-insensitive, with or without a leading
-                dot). Defaults to the extension of ``name``.
+            format: One of :data:`SUPPORTED_FORMATS`, such as ``"pdf"``, ``"docx"``, ``"md"`` or ``"html"``
+                (case-insensitive, with or without a leading dot). Defaults to the extension of ``name``.
 
         Raises:
             UnsupportedFormatError: The format is not supported.
@@ -68,7 +71,7 @@ class Document:
 
     @classmethod
     def from_path(cls, path: str | Path, *, name: str | None = None) -> Document:
-        """Read a pdf, docx, odt or txt file from disk; the format is given by its extension.
+        """Read a supported file from disk; the format is given by its extension.
 
         Args:
             path: The file to read.
@@ -95,7 +98,8 @@ def find_documents(directory: str | Path, *, recursive: bool = False, exclude: s
         exclude: Leave out the files under this path (for instance an output directory inside ``directory``).
 
     Returns:
-        The non-hidden files with a supported extension (case-insensitive), sorted by path.
+        The non-hidden files with a supported extension (case-insensitive), sorted by path. HTML files next to a
+        ``_results.html`` file are left out: they are a copy-spotter report, not documents.
     """
     directory = Path(directory)
     excluded = None if exclude is None else Path(exclude).resolve()
@@ -105,6 +109,8 @@ def find_documents(directory: str | Path, *, recursive: bool = False, exclude: s
         if not path.is_file() or not is_supported(path) or path.name.startswith("."):
             continue
         if excluded is not None and path.resolve().is_relative_to(excluded):
+            continue
+        if path.suffix.lower() in _HTML_SUFFIXES and (path.parent / RESULTS_FILENAME).is_file():
             continue
         documents.append(path)
     return sorted(documents)

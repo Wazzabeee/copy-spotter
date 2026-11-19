@@ -43,7 +43,7 @@ def test_public_names() -> None:
 
 
 def test_public_values() -> None:
-    assert copy_spotter.SUPPORTED_FORMATS == ("pdf", "docx", "odt", "txt")
+    assert copy_spotter.SUPPORTED_FORMATS == ("pdf", "docx", "odt", "txt", "md", "html", "htm", "rtf", "ipynb")
     assert copy_spotter.ENGINES == ("shingle", "difflib")
     assert copy_spotter.DEFAULT_THRESHOLDS == (5.0, 10.0, 15.0)
     assert isinstance(copy_spotter.__version__, str)

@@ -66,7 +66,7 @@ def parse_thresholds(text: str) -> tuple[float, float, float]:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="copy-spotter",
-        description="Compare every pair of documents (pdf, docx, odt, txt) in a directory "
+        description="Compare every pair of documents (pdf, docx, odt, txt, md, html, rtf, ipynb) in a directory "
         "and highlight similar passages.",
     )
     parser.add_argument("in_dir", type=Path, help="directory containing the documents to compare")

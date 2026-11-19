@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Features
+- New input formats: Markdown (`.md`), HTML (`.html`, `.htm`, visible text only), Rich Text (`.rtf`) and Jupyter
+  notebooks (`.ipynb`, Markdown and code cells). They are read with the standard library only and work with
+  `Document.from_bytes`. HTML files next to a `_results.html` file (an earlier copy-spotter report) are skipped.
 - Scores take document length into account: each pair now has two directional coverage scores, the percentage of
   each document found in the other. A short text fully copied into a long document scores 100% in that direction.
 - The similarity matrix is no longer symmetric: the cell at row A, column B is the percentage of A found in B.

@@ -1,7 +1,8 @@
-"""Text extraction from pdf, docx, odt and txt files.
+"""Text extraction from pdf, docx, odt, txt, md, html, rtf and ipynb files.
 
 Readers take the file content as bytes, so documents can come from memory as well as from disk. The parsers
 (pdfminer, odfpy) are imported on first use: importing copy-spotter stays fast and only the formats in use load.
+The markup readers (Markdown, HTML, RTF, notebooks) only use the standard library.
 """
 
 from __future__ import annotations
@@ -14,13 +15,10 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 from copy_spotter._errors import UnsupportedFormatError
+from copy_spotter._formats import TXT_ENCODINGS, read_html, read_ipynb, read_markdown, read_rtf
 
-SUPPORTED_FORMATS = ("pdf", "docx", "odt", "txt")
+SUPPORTED_FORMATS = ("pdf", "docx", "odt", "txt", "md", "html", "htm", "rtf", "ipynb")
 SUPPORTED_EXTENSIONS = tuple(f".{fmt}" for fmt in SUPPORTED_FORMATS)
-
-# Encodings tried in order for plain text files. cp1252 is a superset of latin-1 for printable
-# characters and is what most Windows editors produce; latin-1 never fails and acts as last resort.
-_TXT_ENCODINGS = ("utf-8-sig", "cp1252", "latin-1")
 
 _WORD_RE = re.compile(r"\w+")
 _W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -99,7 +97,7 @@ def read_pdf(data: bytes) -> str:
 
 def read_txt(data: bytes) -> str:
     """Return the content of a text file, trying common encodings."""
-    for encoding in _TXT_ENCODINGS:
+    for encoding in TXT_ENCODINGS:
         try:
             return data.decode(encoding)
         except UnicodeDecodeError:
@@ -153,6 +151,11 @@ _READERS: dict[str, Callable[[bytes], str]] = {
     "docx": read_docx,
     "odt": read_odt,
     "txt": read_txt,
+    "md": read_markdown,
+    "html": read_html,
+    "htm": read_html,
+    "rtf": read_rtf,
+    "ipynb": read_ipynb,
 }
 
 
