@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import gc
 import json
 import pickle
+import random
 import shutil
 from itertools import combinations
 from pathlib import Path
@@ -12,7 +14,7 @@ from copy_spotter._compare import Pair, compare_documents, compare_pair
 from copy_spotter._documents import Document, Skipped, load_directory
 from copy_spotter._progress import Progress
 from copy_spotter._report import RESULTS_FILENAME
-from copy_spotter.similarity import Match
+from copy_spotter.similarity import ENGINES, Engine, Match
 
 from .conftest import PLAGIARISM_DIR, make_docx, make_pair, make_results
 
@@ -85,6 +87,51 @@ def test_exception_in_progress_callback_aborts() -> None:
 
     with pytest.raises(KeyboardInterrupt):
         compare_documents(_docs("a b", "b c", "c d"), progress=stop)
+
+
+def _fuzz_documents(seed: int) -> list[Document]:
+    """Documents over small or large vocabularies, empty or short ones, with passages copied between them."""
+    rng = random.Random(seed)
+    vocabulary = [f"w{k}" for k in range(rng.choice([2, 3, 20, 200]))]
+    texts: list[list[str]] = []
+    for _ in range(rng.randint(2, 6)):
+        words = rng.choices(vocabulary, k=rng.choice([0, 1, 2, 10, 150, 400]))
+        if texts and len(words) > 20 and len(source := rng.choice(texts)) > 30:
+            a = rng.randrange(len(source) - 20)
+            words[5 : 5 + 20] = source[a : a + 20]
+        texts.append(words)
+    return _docs(*(" ".join(words) for words in texts))
+
+
+@pytest.mark.parametrize("engine", ENGINES)
+@pytest.mark.parametrize("seed", range(25))
+def test_compare_documents_matches_compare_pair_on_every_pair(seed: int, engine: Engine) -> None:
+    # compare_documents shares one index across the corpus; compare_pair compares each pair on its own.
+    documents = _fuzz_documents(seed)
+    words = [list(document.words) for document in documents]
+    indexes = list(combinations(range(len(documents)), 2))
+    for block_size in (1, 2, 3, 5):
+        events: list[Progress] = []
+        results = compare_documents(documents, block_size=block_size, engine=engine, progress=events.append)
+        expected = [compare_pair(i, j, words[i], words[j], block_size=block_size, engine=engine) for i, j in indexes]
+        assert list(results.pairs) == expected
+        assert events == [Progress("compare", done, len(indexes)) for done in range(len(indexes) + 1)]
+
+
+@pytest.mark.parametrize("engine", ENGINES)
+def test_exception_in_progress_callback_aborts_any_engine(engine: Engine) -> None:
+    seen: list[int] = []
+
+    def stop(event: Progress) -> None:
+        seen.append(event.done)
+        if event.done == 2:
+            raise KeyboardInterrupt
+
+    gc_enabled = gc.isenabled()
+    with pytest.raises(KeyboardInterrupt):
+        compare_documents(_docs("a b c", "b c d", "c d e", "d e f"), engine=engine, progress=stop)
+    assert seen == [0, 1, 2]
+    assert gc.isenabled() == gc_enabled
 
 
 def test_ranked_sorts_by_highest_score_with_ties_in_order() -> None:

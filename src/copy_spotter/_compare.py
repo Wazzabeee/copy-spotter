@@ -11,7 +11,7 @@ from copy_spotter._documents import Document
 from copy_spotter._options import ScoreMode, check_block_size
 from copy_spotter._progress import ProgressCallback, emit
 from copy_spotter._results import Results
-from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, Engine, Match, compare, coverage
+from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, Comparison, Engine, Match, compare, compare_all, coverage
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,8 +53,12 @@ class Pair:
 
 def compare_pair(i: int, j: int, words_i: list[str], words_j: list[str], *, block_size: int, engine: Engine) -> Pair:
     """Compare the words of documents ``i`` and ``j``: the unit of work, pure and picklable."""
-    ratio, blocks = compare(words_i, words_j, block_size, engine)
-    coverage_i, coverage_j = coverage(blocks, len(words_i), len(words_j))
+    return _make_pair(i, j, compare(words_i, words_j, block_size, engine), len(words_i), len(words_j))
+
+
+def _make_pair(i: int, j: int, comparison: Comparison, len_i: int, len_j: int) -> Pair:
+    ratio, blocks = comparison
+    coverage_i, coverage_j = coverage(blocks, len_i, len_j)
     return Pair(i=i, j=j, ratio=ratio, coverage_i=coverage_i, coverage_j=coverage_j, blocks=tuple(blocks))
 
 
@@ -90,8 +94,10 @@ def compare_documents(
     words = [list(document.words) for document in documents]
     indexes = list(combinations(range(len(documents)), 2))
     pairs = []
+    # One shared index for the whole corpus (shingle engine): same results as compare_pair() on each pair.
+    comparisons = compare_all(words, block_size, engine)
     emit(progress, "compare", 0, len(indexes))
-    for i, j in indexes:
-        pairs.append(compare_pair(i, j, words[i], words[j], block_size=block_size, engine=engine))
+    for (i, j), comparison in zip(indexes, comparisons, strict=True):
+        pairs.append(_make_pair(i, j, comparison, len(words[i]), len(words[j])))
         emit(progress, "compare", len(pairs), len(indexes))
     return Results(documents=tuple(documents), pairs=tuple(pairs), block_size=block_size, engine=engine)
