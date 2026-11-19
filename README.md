@@ -15,6 +15,14 @@ side view of each pair where identical passages are highlighted with the same co
 
 Everything runs locally: your documents never leave your machine.
 
+## Use it in your browser
+
+No installation needed: open **[wazzabeee.github.io/copy-spotter](https://wazzabeee.github.io/copy-spotter/)**, drop
+your documents or a folder, and read the report in the page. It runs the same code as the command line inside your
+browser tab (with [Pyodide](https://pyodide.org)), so your files are never uploaded, and you can download the report
+as HTML, JSON or CSV. The first visit downloads about 23 MB. It works in a recent browser, on a computer or a phone.
+Large batches are faster with the command line. The source is in [`web/`](web/).
+
 ## Installation
 
 ```bash

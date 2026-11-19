@@ -10,6 +10,7 @@ https://wazzabeee.github.io/copy-spotter/.
 | `worker.js` | Loads Pyodide, installs the wheels with micropip (no dependency resolution) and runs the comparison. |
 | `copy_spotter_web.py` | Python glue over the public API, tested in CPython by `tests/test_web.py`. |
 | `build.py` | Assembles the site into `web/_site`: Pyodide runtime and packages, project wheel, dependency wheels. |
+| `smoke.mjs` | Runs a built site in Node with Pyodide and prints the CSV export; CI diffs it with the CLI's. |
 
 Build and serve locally (needs network access the first time; downloads are cached in `web/.cache`):
 
@@ -27,6 +28,9 @@ Everything the page loads is copied into the site, so it makes no request to ano
   pinned `pyodide-lock.json`.
 - pdfminer.six, odfpy and defusedxml are not in Pyodide: their versions and hashes come from `uv.lock`. odfpy only
   publishes an sdist, so the build makes a pure Python wheel from it, and .odt files work in the browser.
+
+The `Web app` workflow (`.github/workflows/pages.yml`) builds and smoke tests the site on every pull request and
+deploys it to GitHub Pages on every push to main.
 
 To upgrade Pyodide, change `PYODIDE_VERSION` and the hashes in `PYODIDE_CORE` (the build prints a mismatch error
 with the new value of each file).
