@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -24,6 +24,16 @@ if TYPE_CHECKING:
     from copy_spotter._documents import Document
 
 
+def describe_options(options: Mapping[str, object]) -> str:
+    """Return the matching options for the one-line summary of a run: ``""``, or ``", accents folded, ..."``."""
+    parts = []
+    if options.get("normalize"):
+        parts.append("accents folded")
+    if options.get("stopwords"):
+        parts.append(f"{options['stopwords']} stopwords ignored")
+    return "".join(f", {part}" for part in parts)
+
+
 @dataclass(frozen=True)
 class Results:
     """The outcome of :func:`compare_documents`: every document and every pair.
@@ -36,12 +46,15 @@ class Results:
         pairs: One :class:`Pair` per pair of documents ``i < j``, in ``itertools.combinations`` order.
         block_size: Minimum number of consecutive identical words that counted as a match.
         engine: The matching engine used.
+        options: The matching options that were turned on, as JSON values, for instance
+            ``{"normalize": ["accents"], "stopwords": 174}`` (the number of stopwords). Empty by default.
     """
 
     documents: tuple[Document, ...]
     pairs: tuple[Pair, ...]
     block_size: int
     engine: Engine
+    options: Mapping[str, object] = field(default_factory=dict, hash=False)
 
     def ranked(self, score: ScoreMode = "coverage") -> list[Pair]:
         """Return the pairs sorted by their higher score in the ``score`` mode, highest first.
@@ -88,7 +101,7 @@ class Results:
             return meta
         return (
             f"{len(self.documents)} documents, minimum block size {self.block_size}, "
-            f"{self.engine} engine, {score} score, copy-spotter {__version__}"
+            f"{self.engine} engine{describe_options(self.options)}, {score} score, copy-spotter {__version__}"
         )
 
     def to_dict(

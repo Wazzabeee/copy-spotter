@@ -17,6 +17,7 @@ Importing this package is cheap: the PDF and ODT parsers are only imported when 
 from copy_spotter._compare import Pair, compare_documents
 from copy_spotter._documents import Document, Skipped, find_documents, load_directory
 from copy_spotter._errors import CopySpotterError, DocumentReadError, UnsupportedFormatError
+from copy_spotter._normalize import NORMALIZATIONS, STOPWORD_LANGUAGES, Normalization, stopword_list
 from copy_spotter._options import DEFAULT_THRESHOLDS, ReportLayout, ScoreMode
 from copy_spotter._progress import Progress
 from copy_spotter._results import Results
@@ -27,12 +28,15 @@ from copy_spotter.similarity import ENGINES, Engine, Match
 __all__ = [
     "DEFAULT_THRESHOLDS",
     "ENGINES",
+    "NORMALIZATIONS",
+    "STOPWORD_LANGUAGES",
     "SUPPORTED_FORMATS",
     "CopySpotterError",
     "Document",
     "DocumentReadError",
     "Engine",
     "Match",
+    "Normalization",
     "Pair",
     "Progress",
     "ReportLayout",
@@ -44,4 +48,5 @@ __all__ = [
     "compare_documents",
     "find_documents",
     "load_directory",
+    "stopword_list",
 ]

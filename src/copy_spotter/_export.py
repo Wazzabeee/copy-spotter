@@ -14,6 +14,7 @@ JSON::
         "score_mode": "coverage" | "ratio",    # score used to sort the pairs and shown in the report
         "block_size": int,                     # minimum block size used for the run
         "thresholds": [float, float, float],   # score color steps of the HTML report, in percent
+        "options": {...},                      # only when matching options were on, see below
         "documents": [{"index": int, "name": str, "word_count": int}, ...],
         "pairs": [
             {
@@ -31,6 +32,10 @@ JSON::
 
 A block means words ``start_1 .. start_1 + size - 1`` of document 1 equal words ``start_2 ..`` of document 2.
 Blocks are listed in the engine's order and may be out of order on either side.
+
+``options`` lists the matching options that were turned on and is left out when there are none:
+``"normalize": ["accents"]`` (accents folded) and ``"stopwords": int`` (number of stopwords left out of the
+matching; ``word_count`` and word positions then count the remaining words only).
 
 CSV columns: ``document_1, document_2, coverage_1, coverage_2, ratio, matched_words, block_count``.
 """
@@ -58,13 +63,17 @@ def export_data(
 ) -> dict[str, Any]:
     """Return the JSON export as a dict (see the module docstring for the shape)."""
     names = [document.name for document in results.documents]
-    return {
+    data: dict[str, Any] = {
         "version": EXPORT_VERSION,
         "copy_spotter_version": __version__,
         "engine": results.engine,
         "score_mode": score,
         "block_size": results.block_size,
         "thresholds": list(thresholds),
+    }
+    if results.options:
+        data["options"] = dict(results.options)
+    return data | {
         "documents": [
             {"index": k, "name": document.name, "word_count": len(document.words)}
             for k, document in enumerate(results.documents)

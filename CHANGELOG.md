@@ -6,6 +6,10 @@
 - New input formats: Markdown (`.md`), HTML (`.html`, `.htm`, visible text only), Rich Text (`.rtf`) and Jupyter
   notebooks (`.ipynb`, Markdown and code cells). They are read with the standard library only and work with
   `Document.from_bytes`. HTML files next to a `_results.html` file (an earlier copy-spotter report) are skipped.
+- `--normalize accents` folds accents and ligatures before matching, and `--stopwords LANGS_OR_FILE` leaves common
+  words out of the matching (built-in lists for en, fr, es, de, it, pt, or a file of words). Both are off by default;
+  the report still shows the original text. Python API: `compare_documents(normalize=..., stopwords=...)` and
+  `stopword_list()`. The JSON export gains an `options` field when matching options are on.
 - Scores take document length into account: each pair now has two directional coverage scores, the percentage of
   each document found in the other. A short text fully copied into a long document scores 100% in that direction.
 - The similarity matrix is no longer symmetric: the cell at row A, column B is the percentage of A found in B.
