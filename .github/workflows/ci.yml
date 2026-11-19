@@ -29,8 +29,6 @@ jobs:
         os: [ubuntu-latest]
         python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         include:
-          - os: macos-latest
-            python: "3.13"
           - os: windows-latest
             python: "3.13"
     steps:
@@ -40,6 +38,22 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: uv sync --locked
       - run: uv run pytest --cov --cov-report=term-missing
+
+  # macOS runners are often unavailable for a long time, which left PRs waiting on a
+  # queued job. macOS runs only after a push to main and never fails the workflow.
+  test-macos:
+    name: Tests (Python 3.13, macos-latest, non-blocking)
+    if: github.event_name == 'push'
+    runs-on: macos-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - run: uv sync --locked
+      - run: uv run pytest
 
   build:
     name: Build package
