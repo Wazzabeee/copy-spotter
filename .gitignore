@@ -135,3 +135,7 @@ dmypy.json
 .pyre/
 .DS_Store
 .ruff_cache/
+
+# Web app build output and download cache (web/build.py)
+web/_site/
+web/.cache/
