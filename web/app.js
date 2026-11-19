@@ -6,6 +6,7 @@ const extension = (name) => (name.match(/\.([^./]+)$/) || ["", ""])[1].toLowerCa
 let entries = []; // { path, file }: path is relative to what was picked or dropped, with "/" separators
 let ignored = [];
 let engineReady = false;
+let engineFailed = false;
 let running = false;
 let result = null;
 let runId = 0;
@@ -162,6 +163,10 @@ $("run").addEventListener("click", async () => {
     setStatus(error.message, true);
     return;
   }
+  if (engineFailed) {
+    setStatus("The comparison program could not load. Reload the page to try again.", true);
+    return;
+  }
   running = true;
   runId += 1;
   $("run").disabled = true;
@@ -201,6 +206,22 @@ function showReport(message) {
   $("results").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function loadFailed(text) {
+  engineFailed = true;
+  $("engine-status").textContent = `The comparison program could not load: ${text}. Reload the page to try again.`;
+  $("engine-status").classList.add("warning");
+  if (running) {
+    finish();
+    setStatus("Could not start the comparison.", true);
+  }
+}
+
+// The worker script itself failed (for instance the Pyodide runtime could not be downloaded).
+worker.addEventListener("error", (event) => {
+  event.preventDefault();
+  loadFailed(event.message || "a file could not be downloaded");
+});
+
 worker.addEventListener("message", ({ data: message }) => {
   switch (message.type) {
     case "loading":
@@ -212,12 +233,7 @@ worker.addEventListener("message", ({ data: message }) => {
       $("version").textContent = `Version ${message.version}.`;
       break;
     case "fatal":
-      $("engine-status").textContent = `The comparison program could not load: ${message.text}. Reload the page to try again.`;
-      $("engine-status").classList.add("warning");
-      if (running) {
-        finish();
-        setStatus("Could not start the comparison.", true);
-      }
+      loadFailed(message.text);
       break;
     case "progress":
       if (message.id !== runId) break;

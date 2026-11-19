@@ -28,8 +28,14 @@ const ready = (async () => {
 ready.catch((error) => post({ type: "fatal", text: String(error && error.message ? error.message : error) }));
 
 onmessage = async ({ data }) => {
-  const { pyodide, web } = await ready;
   const { id, files, options } = data;
+  let pyodide, web;
+  try {
+    ({ pyodide, web } = await ready);
+  } catch (error) {
+    post({ type: "error", id, text: "the comparison program could not load. Reload the page to try again." });
+    return;
+  }
   const progress = (stage, done, total) => post({ type: "progress", id, stage, done, total });
   const pyFiles = pyodide.toPy(files.map((file) => [file.name, new Uint8Array(file.buffer)]), { depth: 2 });
   let result;
