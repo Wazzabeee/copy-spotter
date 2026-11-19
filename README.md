@@ -41,7 +41,7 @@ Python 3.10 or newer is required.
 
 ```bash
 copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}]
-             [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
+             [--normalize accents] [--stopwords LANGS_OR_FILE] [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
              [--no-open] [-V] in_dir
 ```
 
@@ -52,6 +52,8 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `-s`, `--block-size` | Minimum number of consecutive identical words to highlight. Default: 2. |
 | `--score` | `coverage` (default): percentage of each document found in the other, so a short text fully copied into a long one scores 100% in that direction. `ratio`: the symmetric similarity ratio of the pair. |
 | `--engine` | Matching algorithm: `shingle` (default) finds copied passages in any order, `difflib` is the legacy in-order matcher. |
+| `--normalize accents` | Ignore accents and ligatures when matching, so `élève` matches `eleve`. |
+| `--stopwords` | Leave common words out of the matching: built-in lists for `en`, `fr`, `es`, `de`, `it`, `pt` (comma separated, for instance `en,fr`), or the path of a text file of words. |
 | `--report` | `single` (default): one self-contained `_results.html` file. `pages`: `_results.html` plus one page per pair. |
 | `--json PATH` | Also write the pairs, scores and matching blocks as JSON. |
 | `--csv PATH` | Also write one CSV row per pair. |
@@ -61,6 +63,21 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `-V`, `--version` | Show the version and exit. |
 
 Empty files and PDFs without a text layer (scanned documents) are skipped with a warning.
+
+### Matching options
+
+By default words must be identical, apart from case and punctuation. Two options loosen this, both off by default:
+
+- `--normalize accents` folds accents and compatibility characters before matching: `élève` matches `eleve`, and the
+  `ﬁ` ligature found in some PDFs matches `fi`.
+- `--stopwords en` leaves common words (articles, pronouns, prepositions...) out of the matching, so a passage where
+  only `the` became `a` is still one copied block. Stopwords are not counted in the scores either: coverage is the
+  share of the other words. Built-in lists: `en`, `fr`, `es`, `de`, `it`, `pt`; combine them with `en,fr`, or give a
+  text file with your own words.
+
+The report still shows the original text: a block is highlighted from its first to its last word, stopwords
+included. The options in use are listed under the title of the report and in the `options` field of the JSON export.
+Stemming (matching `copied` with `copying`) is not supported.
 
 ### Supported formats
 
@@ -96,7 +113,8 @@ With `--report pages` the results directory holds `_results.html` plus one HTML 
 `--json` and `--csv` write the results in a form other tools can read, with pairs sorted by their highest score in
 the `--score` mode, highest first. Field names are stable; new fields may be added later.
 
-- JSON: `version`, `copy_spotter_version`, `engine`, `score_mode`, `block_size`, `thresholds`, `documents`
+- JSON: `version`, `copy_spotter_version`, `engine`, `score_mode`, `block_size`, `thresholds`, `options` (only when
+  matching options are on, for instance `{"normalize": ["accents"], "stopwords": 174}`), `documents`
   (`index`, `name`, `word_count`) and `pairs` (`document_1`, `document_2`, `index_1`, `index_2`, `coverage_1`,
   `coverage_2`, `ratio`, `matched_words`, and `blocks` with `start_1`, `start_2`, `size`). `coverage_1` is the % of
   document 1 found in document 2. Block positions count extracted words from 0.
@@ -135,8 +153,10 @@ report = results.save("results/api", report="pages")
 
 - `Document.from_path(path)`, `Document.from_bytes(data, name, format=None)` and `Document.from_text(text, name)`
   build a document; a `Document` holds its `name`, display `text`, lowercase `words` and the `spans` of the words.
-- `compare_documents(documents, block_size=2, engine="shingle", progress=None)` returns `Results`: the documents and
-  one `Pair` per pair (`i`, `j`, `coverage_i`, `coverage_j`, `ratio`, matching `blocks`).
+- `compare_documents(documents, block_size=2, engine="shingle", normalize=(), stopwords=(), progress=None)` returns
+  `Results`: the documents and one `Pair` per pair (`i`, `j`, `coverage_i`, `coverage_j`, `ratio`, matching
+  `blocks`). `normalize=["accents"]` and `stopwords=stopword_list("en", "fr")` are the `--normalize` and
+  `--stopwords` options; `Results.options` records them.
 - `Results.ranked(score)`, `pair(a, b)`, `to_dict`, `to_json`, `to_csv`, `to_html`, `to_html_pages` and `save` take
   the score mode and thresholds when rendering, so one comparison can be shown several ways.
 - `load_directory(directory, recursive=False, on_skip=None, progress=None)` reports skipped files to `on_skip`;

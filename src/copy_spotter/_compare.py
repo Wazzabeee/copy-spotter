@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 
 from copy_spotter._documents import Document
+from copy_spotter._normalize import Normalization, check_normalize, normalize_document
 from copy_spotter._options import ScoreMode, check_block_size
 from copy_spotter._progress import ProgressCallback, emit
 from copy_spotter._results import Results
@@ -67,6 +68,8 @@ def compare_documents(
     *,
     block_size: int = 2,
     engine: Engine = DEFAULT_ENGINE,
+    normalize: Iterable[Normalization] = (),
+    stopwords: Iterable[str] = (),
     progress: ProgressCallback | None = None,
 ) -> Results:
     """Compare every pair of documents.
@@ -75,14 +78,21 @@ def compare_documents(
         documents: The documents to compare; their names must be unique.
         block_size: Minimum number of consecutive identical words that count as a match.
         engine: ``"shingle"`` finds copied passages in any order; ``"difflib"`` is the legacy in-order matcher.
+        normalize: ``("accents",)`` folds accents and compatibility characters before matching, so "élève"
+            matches "eleve".
+        stopwords: Words left out of the matching, for instance ``stopword_list("en")``: a passage that differs
+            only by these words still matches. Stopwords are not counted in the scores.
         progress: Called with a :class:`Progress` event (stage ``"compare"``) before the first pair and after
             each pair.
 
     Returns:
-        The scores and matching blocks of every pair, in ``itertools.combinations`` order.
+        The scores and matching blocks of every pair, in ``itertools.combinations`` order. With ``normalize`` or
+        ``stopwords``, ``Results.documents`` holds the normalized documents: same names and text, normalized
+        words, and no stopwords in ``words`` and ``spans``, so that blocks index the words that were matched.
 
     Raises:
-        ValueError: ``block_size`` is below 1, ``engine`` is unknown or two documents have the same name.
+        ValueError: ``block_size`` is below 1, ``engine`` or a normalization is unknown, or two documents have
+            the same name.
     """
     check_block_size(block_size)
     if engine not in ENGINES:
@@ -90,6 +100,16 @@ def compare_documents(
     duplicates = sorted(name for name, count in Counter(document.name for document in documents).items() if count > 1)
     if duplicates:
         raise ValueError(f"document names must be unique, found duplicates: {', '.join(duplicates)}")
+    normalizations = check_normalize(normalize)
+    stopword_set = frozenset(word.lower() for word in stopwords)
+    accents = "accents" in normalizations
+    options: dict[str, object] = {}
+    if normalizations or stopword_set:
+        documents = [normalize_document(d, accents=accents, stopwords=stopword_set) for d in documents]
+    if normalizations:
+        options["normalize"] = list(normalizations)
+    if stopword_set:
+        options["stopwords"] = len(stopword_set)
 
     words = [list(document.words) for document in documents]
     indexes = list(combinations(range(len(documents)), 2))
@@ -100,4 +120,6 @@ def compare_documents(
     for (i, j), comparison in zip(indexes, comparisons, strict=True):
         pairs.append(_make_pair(i, j, comparison, len(words[i]), len(words[j])))
         emit(progress, "compare", len(pairs), len(indexes))
-    return Results(documents=tuple(documents), pairs=tuple(pairs), block_size=block_size, engine=engine)
+    return Results(
+        documents=tuple(documents), pairs=tuple(pairs), block_size=block_size, engine=engine, options=options
+    )

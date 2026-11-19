@@ -25,10 +25,13 @@ def test_public_names() -> None:
         "ENGINES",
         "Engine",
         "Match",
+        "NORMALIZATIONS",
+        "Normalization",
         "Pair",
         "Progress",
         "ReportLayout",
         "Results",
+        "STOPWORD_LANGUAGES",
         "SUPPORTED_FORMATS",
         "ScoreMode",
         "Skipped",
@@ -37,6 +40,7 @@ def test_public_names() -> None:
         "compare_documents",
         "find_documents",
         "load_directory",
+        "stopword_list",
     ]
     for name in copy_spotter.__all__:
         assert hasattr(copy_spotter, name), name

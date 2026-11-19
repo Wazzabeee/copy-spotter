@@ -15,10 +15,12 @@ from tqdm import tqdm
 from copy_spotter._compare import compare_documents
 from copy_spotter._documents import Skipped, load_directory
 from copy_spotter._errors import CopySpotterError
+from copy_spotter._normalize import NORMALIZATIONS, STOPWORD_LANGUAGES, stopword_list
 from copy_spotter._options import DEFAULT_THRESHOLDS, REPORT_LAYOUTS, SCORE_MODES, check_block_size, check_thresholds
 from copy_spotter._progress import Progress
+from copy_spotter._results import describe_options
 from copy_spotter._version import __version__
-from copy_spotter.extract import SUPPORTED_EXTENSIONS
+from copy_spotter.extract import SUPPORTED_EXTENSIONS, read_text, tokenize
 from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES
 
 _STAGE_DESCRIPTIONS = {"read": "Reading files", "compare": "Comparing files"}
@@ -63,6 +65,22 @@ def parse_thresholds(text: str) -> tuple[float, float, float]:
         ) from None
 
 
+def parse_stopwords(text: str) -> frozenset[str]:
+    """Parse ``--stopwords``: language codes such as ``en,fr``, or the path of a file of words."""
+    path = Path(text)
+    if path.is_file():
+        try:
+            return frozenset(tokenize(read_text(path.read_bytes(), "txt")))
+        except OSError as exc:
+            raise argparse.ArgumentTypeError(f"cannot read {text}: {exc}") from None
+    try:
+        return stopword_list(*text.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"expected languages among {','.join(STOPWORD_LANGUAGES)} or a file of words, got {text!r}"
+        ) from None
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="copy-spotter",
@@ -100,6 +118,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_ENGINE,
         help="matching algorithm: shingle finds copied passages in any order, difflib is the legacy in-order "
         f"matcher (default: {DEFAULT_ENGINE})",
+    )
+    parser.add_argument(
+        "--normalize",
+        action="append",
+        choices=NORMALIZATIONS,
+        default=[],
+        help="accents: ignore accents and ligatures when matching, so 'élève' matches 'eleve' (repeatable)",
+    )
+    parser.add_argument(
+        "--stopwords",
+        type=parse_stopwords,
+        metavar="LANGS_OR_FILE",
+        help=f"leave common words out of the matching: languages among {','.join(STOPWORD_LANGUAGES)} "
+        "(comma separated) or a text file of words",
     )
     parser.add_argument(
         "--report",
@@ -146,11 +178,18 @@ def run(args: argparse.Namespace) -> Path:
             f"Need at least two readable documents in {in_dir}, found {len(documents)}. "
             f"Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}"
         )
-    results = compare_documents(documents, block_size=args.block_size, engine=args.engine, progress=progress)
+    results = compare_documents(
+        documents,
+        block_size=args.block_size,
+        engine=args.engine,
+        normalize=args.normalize,
+        stopwords=args.stopwords or (),
+        progress=progress,
+    )
 
     meta = (
         f"{len(documents)} documents from {in_dir.name}/, minimum block size {args.block_size}, "
-        f"{args.engine} engine, {args.score} score, copy-spotter {__version__}"
+        f"{args.engine} engine{describe_options(results.options)}, {args.score} score, copy-spotter {__version__}"
     )
     if args.json_path is not None:
         json_path: Path = args.json_path.resolve()
