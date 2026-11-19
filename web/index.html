@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Only this site may be contacted. The report runs in a srcdoc iframe, which inherits this policy, and needs its
+     inline script and styles. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; frame-src 'self'; object-src 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Find copied passages between documents (PDF, Word, OpenDocument, text). Runs entirely in your browser: your files are never uploaded.">
+<title>copy-spotter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232357c6%22/%3E%3Cpath d=%22M9 11h14M9 16h14M9 21h9%22 stroke=%22white%22 stroke-width=%223%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="top">
+  <h1>copy-spotter</h1>
+  <p class="lede">Find copied passages between documents and see them side by side.</p>
+</header>
+
+<main>
+  <section class="privacy" aria-label="Privacy">
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6z M9 12l2 2 4-4"/></svg>
+    <div>
+      <strong>Your files never leave your device.</strong>
+      They are read and compared inside this browser tab. Nothing is uploaded, and this page has no analytics or
+      trackers. The first visit downloads the comparison program (about <span id="load-size">20 MB</span>), then
+      your browser keeps it.
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="step-files">
+    <h2 id="step-files">1. Add documents</h2>
+    <div id="drop" class="drop">
+      <p class="drop-title">Drop files or a folder here</p>
+      <p class="hint">PDF, Word (.docx), OpenDocument (.odt) and plain text (.txt). Scanned PDFs without a text layer
+        cannot be read.</p>
+      <div class="buttons">
+        <label class="button">Choose files
+          <input id="pick-files" type="file" multiple accept=".pdf,.docx,.odt,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text" class="visually-hidden">
+        </label>
+        <label class="button" id="folder-button">Choose a folder
+          <input id="pick-folder" type="file" webkitdirectory class="visually-hidden">
+        </label>
+      </div>
+    </div>
+    <div id="file-panel" hidden>
+      <div class="file-head">
+        <span id="file-count"></span>
+        <button type="button" id="clear" class="link">Remove all</button>
+      </div>
+      <ul id="files" class="files"></ul>
+      <p id="ignored" class="hint" hidden></p>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="step-options">
+    <h2 id="step-options">2. Compare</h2>
+    <details class="options">
+      <summary>Options</summary>
+      <div class="grid">
+        <label for="block-size">Minimum match length (words)
+          <input id="block-size" type="number" min="1" step="1" value="2" inputmode="numeric">
+          <span class="hint">Runs of at least this many identical words count as copied.</span>
+        </label>
+        <label for="engine">Matching
+          <select id="engine">
+            <option value="shingle" selected>Shingle: copied passages in any order</option>
+            <option value="difflib">Difflib: legacy, in order only</option>
+          </select>
+        </label>
+        <label for="score">Score
+          <select id="score">
+            <option value="coverage" selected>Coverage: % of each document found in the other</option>
+            <option value="ratio">Ratio: one similarity score per pair</option>
+          </select>
+        </label>
+        <fieldset>
+          <legend>Color thresholds (%)</legend>
+          <div class="thresholds">
+            <label><span class="swatch low"></span>Yellow above <input id="t-low" type="number" min="0" max="100" step="any" value="5" inputmode="decimal"></label>
+            <label><span class="swatch medium"></span>Orange above <input id="t-medium" type="number" min="0" max="100" step="any" value="10" inputmode="decimal"></label>
+            <label><span class="swatch high"></span>Red above <input id="t-high" type="number" min="0" max="100" step="any" value="15" inputmode="decimal"></label>
+          </div>
+        </fieldset>
+      </div>
+    </details>
+    <div class="run">
+      <button type="button" id="run" class="primary" disabled>Compare documents</button>
+      <p id="status" class="status" role="status" aria-live="polite">Add at least two documents.</p>
+    </div>
+    <progress id="progress" max="1" value="0" hidden></progress>
+    <p id="engine-status" class="hint">Loading the comparison program...</p>
+  </section>
+
+  <section id="results" class="card" aria-labelledby="step-results" hidden>
+    <div class="results-head">
+      <h2 id="step-results">3. Results</h2>
+      <div class="buttons" id="downloads">
+        <button type="button" data-kind="html">Download report (HTML)</button>
+        <button type="button" data-kind="json">JSON</button>
+        <button type="button" data-kind="csv">CSV</button>
+      </div>
+    </div>
+    <p id="skipped" class="warning" hidden></p>
+    <iframe id="report" title="Comparison report" sandbox="allow-scripts"></iframe>
+  </section>
+</main>
+
+<footer>
+  <p><a href="https://github.com/Wazzabeee/copy-spotter">copy-spotter</a> is free and open source (MIT).
+    Prefer the command line? <code>pip install copy-spotter</code>. <span id="version"></span></p>
+</footer>
+</body>
+</html>
