@@ -22,6 +22,9 @@ from copy_spotter.similarity import Engine
 if TYPE_CHECKING:
     from copy_spotter._compare import Pair
     from copy_spotter._documents import Document
+    from copy_spotter._exclusions import Excluded
+
+_IGNORED_PASSAGES = (("ignore_quotes", "quotations"), ("ignore_bibliography", "bibliographies"))
 
 
 def describe_options(options: Mapping[str, object]) -> str:
@@ -31,6 +34,9 @@ def describe_options(options: Mapping[str, object]) -> str:
         parts.append("accents folded")
     if options.get("stopwords"):
         parts.append(f"{options['stopwords']} stopwords ignored")
+    ignored = [name for key, name in _IGNORED_PASSAGES if options.get(key)]
+    if ignored:
+        parts.append(f"{' and '.join(ignored)} ignored")
     return "".join(f", {part}" for part in parts)
 
 
@@ -48,6 +54,9 @@ class Results:
         engine: The matching engine used.
         options: The matching options that were turned on, as JSON values, for instance
             ``{"normalize": ["accents"], "stopwords": 174}`` (the number of stopwords). Empty by default.
+        excluded: The passages left out of the matching (quotations, bibliography), one tuple of
+            :class:`Excluded` word runs per document, sorted and non-overlapping. Empty (``()``) when no passage
+            was excluded.
     """
 
     documents: tuple[Document, ...]
@@ -55,6 +64,7 @@ class Results:
     block_size: int
     engine: Engine
     options: Mapping[str, object] = field(default_factory=dict, hash=False)
+    excluded: tuple[tuple[Excluded, ...], ...] = ()
 
     def ranked(self, score: ScoreMode = "coverage") -> list[Pair]:
         """Return the pairs sorted by their higher score in the ``score`` mode, highest first.

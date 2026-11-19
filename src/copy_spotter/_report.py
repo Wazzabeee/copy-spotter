@@ -13,6 +13,7 @@ from copy_spotter._options import DEFAULT_THRESHOLDS, ScoreMode
 if TYPE_CHECKING:
     from copy_spotter._compare import Pair
     from copy_spotter._documents import Document
+    from copy_spotter._exclusions import Excluded
     from copy_spotter._results import Results
 
 RESULTS_FILENAME = "_results.html"
@@ -54,25 +55,39 @@ def block_color(index: int) -> str:
     return f"hsl({hue:.0f}, 75%, 35%)"
 
 
-def highlight(document: Document, spans: Iterable[tuple[int, int, int]]) -> str:
+EXCLUDED_STYLE = "color: #8c8c8c"
+EXCLUDED_TITLES = {
+    "quote": "Quotation: left out of the matching",
+    "bibliography": "Bibliography: left out of the matching",
+}
+
+
+def highlight(document: Document, spans: Iterable[tuple[int, int, int]], excluded: Iterable[Excluded] = ()) -> str:
     """Return the document's text as HTML, wrapping each ``(start, size, color_index)`` word range in a colored tag.
 
     Each range covers words ``[start, start + size)`` and is shown from the first word's first character to the
     last word's last character. Ranges may come in any order; a range overlapping an earlier one is trimmed.
+    ``excluded`` word runs (left out of the matching) are shown in grey the same way.
     """
     text = document.text
     parts: list[str] = []
     cursor = 0  # characters already written
     next_word = 0  # first word not highlighted yet
-    for start, size, color_index in sorted(spans):
+    ranges = [(start, size, 0, color_index, "") for start, size, color_index in spans]
+    ranges += [(run.start, run.size, 1, 0, run.reason) for run in excluded]
+    for start, size, kind, color_index, reason in sorted(ranges):
         first, stop = max(start, next_word), start + size
         if first >= stop:
             continue
         begin, end = document.spans[first][0], document.spans[stop - 1][1]
         next_word = stop
         parts.append(escape(text[cursor:begin]))
-        matched = escape(text[begin:end])
-        parts.append(f'<span class="match" style="color: {block_color(color_index)}">{matched}</span>')
+        inner = escape(text[begin:end])
+        if kind:
+            title = escape(EXCLUDED_TITLES.get(reason, "Left out of the matching"))
+            parts.append(f'<span class="excluded" style="{EXCLUDED_STYLE}" title="{title}">{inner}</span>')
+        else:
+            parts.append(f'<span class="match" style="color: {block_color(color_index)}">{inner}</span>')
         cursor = end
     parts.append(escape(text[cursor:]))
     return "".join(parts)
@@ -92,8 +107,9 @@ def render_comparison(
     """Return the side-by-side HTML page for one pair of documents."""
     documents = results.documents[pair.i], results.documents[pair.j]
     names = documents[0].name, documents[1].name
-    left = highlight(documents[0], [(m.a, m.size, k) for k, m in enumerate(pair.blocks)])
-    right = highlight(documents[1], [(m.b, m.size, k) for k, m in enumerate(pair.blocks)])
+    excluded = results.excluded or ((),) * len(results.documents)
+    left = highlight(documents[0], [(m.a, m.size, k) for k, m in enumerate(pair.blocks)], excluded[pair.i])
+    right = highlight(documents[1], [(m.b, m.size, k) for k, m in enumerate(pair.blocks)], excluded[pair.j])
     return _render(
         _template("comparison.html"),
         title=escape(f"{names[0]} vs {names[1]}"),

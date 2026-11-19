@@ -134,6 +134,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "(comma separated) or a text file of words",
     )
     parser.add_argument(
+        "--ignore-quotes",
+        action="store_true",
+        help="leave passages between quotation marks out of the matching (shown in grey in the report)",
+    )
+    parser.add_argument(
+        "--ignore-bibliography",
+        action="store_true",
+        help="leave the bibliography out of the matching: the text after the last heading such as References, "
+        "Bibliography or Works cited",
+    )
+    parser.add_argument(
         "--report",
         choices=REPORT_LAYOUTS,
         default="single",
@@ -184,6 +195,8 @@ def run(args: argparse.Namespace) -> Path:
         engine=args.engine,
         normalize=args.normalize,
         stopwords=args.stopwords or (),
+        ignore_quotes=args.ignore_quotes,
+        ignore_bibliography=args.ignore_bibliography,
         progress=progress,
     )
 

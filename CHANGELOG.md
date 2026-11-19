@@ -10,6 +10,10 @@
   words out of the matching (built-in lists for en, fr, es, de, it, pt, or a file of words). Both are off by default;
   the report still shows the original text. Python API: `compare_documents(normalize=..., stopwords=...)` and
   `stopword_list()`. The JSON export gains an `options` field when matching options are on.
+- `--ignore-quotes` and `--ignore-bibliography` leave quotations (straight and curly quotes, guillemets, German and
+  CJK quotation marks) and the trailing bibliography out of the matching. Excluded passages are shown in grey in the
+  reports and listed in the JSON export; they still count in the document length. Python API:
+  `compare_documents(ignore_quotes=..., ignore_bibliography=...)` and `Results.excluded`.
 - Scores take document length into account: each pair now has two directional coverage scores, the percentage of
   each document found in the other. A short text fully copied into a long document scores 100% in that direction.
 - The similarity matrix is no longer symmetric: the cell at row A, column B is the percentage of A found in B.
