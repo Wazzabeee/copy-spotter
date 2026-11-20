@@ -42,6 +42,10 @@ def describe_options(options: Mapping[str, object]) -> str:
         ignored.append(f"passages in more than {options['ignore_common']:g}% of the documents")
     if ignored:
         parts.append(f"{', '.join(ignored)} ignored")
+    if options.get("references"):
+        only = " only" if options.get("compare_submissions") is False else ""
+        count = options["references"]
+        parts.append(f"compared with {count} reference source{'' if count == 1 else 's'}{only}")
     return "".join(f", {part}" for part in parts)
 
 
@@ -63,6 +67,8 @@ class Results:
             passages), one tuple of
             :class:`Excluded` word runs per document, sorted and non-overlapping. Empty (``()``) when no passage
             was excluded.
+        references: Indexes of the documents that are reference sources (``compare_documents(references=...)``),
+            after the submissions. A reference is only compared with submissions. Empty by default.
     """
 
     documents: tuple[Document, ...]
@@ -71,6 +77,11 @@ class Results:
     engine: Engine
     options: Mapping[str, object] = field(default_factory=dict, hash=False)
     excluded: tuple[tuple[Excluded, ...], ...] = ()
+    references: tuple[int, ...] = ()
+
+    def is_reference(self, index: int) -> bool:
+        """Return True if ``documents[index]`` is a reference source rather than a submission."""
+        return index in self.references
 
     def ranked(self, score: ScoreMode = "coverage") -> list[Pair]:
         """Return the pairs sorted by their higher score in the ``score`` mode, highest first.

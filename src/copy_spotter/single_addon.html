@@ -2,6 +2,16 @@
     .excluded {
         color: #8c8c8c;
     }
+
+    .reference {
+        font-size: 0.75em;
+        font-weight: normal;
+        color: #555;
+        border: 1px solid #aaa;
+        border-radius: 3px;
+        padding: 0 3px;
+        margin-left: 4px;
+    }
 </style>
 <script>
 (function () {
@@ -57,9 +67,29 @@
         }
     }
 
+    // Add a "source" badge after the name of each reference source, wherever the page shows it.
+    const referenceNames = new Set(docs.filter(function (d) { return d.reference; }).map(function (d) { return d.name; }));
+
+    function badge() {
+        const span = document.createElement("span");
+        span.className = "reference";
+        span.title = "Reference source";
+        span.textContent = "source";
+        return span;
+    }
+
+    function markReferences(nodes) {
+        for (const node of nodes) {
+            const name = node.title || node.textContent;
+            if (referenceNames.has(name) && !node.querySelector(".reference")) node.appendChild(badge());
+        }
+    }
+
     function update() {
+        markReferences(document.querySelectorAll("#overview .name"));
         const m = /^#pair-(\d+)-(\d+)$/.exec(location.hash);
         if (!m || document.getElementById("comparison").hidden) return;
+        markReferences(document.querySelectorAll("#comparison h3"));
         greyExcluded(document.querySelector("#left .text"), docs[+m[1]]);
         greyExcluded(document.querySelector("#right .text"), docs[+m[2]]);
     }

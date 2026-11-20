@@ -42,7 +42,8 @@ Python 3.10 or newer is required.
 ```bash
 copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}]
              [--normalize accents] [--stopwords LANGS_OR_FILE] [--ignore-quotes] [--ignore-bibliography]
-             [--exclude FILE_OR_DIR] [--ignore-common PCT] [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
+             [--exclude FILE_OR_DIR] [--ignore-common PCT] [--reference FILE_OR_DIR] [--reference-only]
+             [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
              [--no-open] [-V] in_dir
 ```
 
@@ -59,6 +60,8 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `--ignore-bibliography` | Leave the bibliography (the end of the document after a heading such as References, Bibliography or Works cited) out of the matching. |
 | `--exclude` | Text everyone was given (assignment prompt, template, starter code): passages of four words or more found in it are left out of the matching. A file or a directory; repeatable. |
 | `--ignore-common PCT` | Leave out of the matching the passages found in more than PCT% of the documents, and in at least three. |
+| `--reference` | Reference sources (articles, web pages, last year's essays) to compare every document with. A file or a directory; repeatable. References are not compared with each other. |
+| `--reference-only` | With `--reference`, compare each document with the references only, not with the other documents. |
 | `--report` | `single` (default): one self-contained `_results.html` file. `pages`: `_results.html` plus one page per pair. |
 | `--json PATH` | Also write the pairs, scores and matching blocks as JSON. |
 | `--csv PATH` | Also write one CSV row per pair. |
@@ -99,6 +102,19 @@ Quoting a source is not copying it. Two options leave such passages out of the m
 Excluded passages stay in the report, in grey, but their words never match, so copied passages stop where a quotation
 starts. They still count in the length of the document: excluding passages can only lower a score. The JSON export
 lists them per document (`excluded_words`, and `excluded` runs with `start`, `size` and `reason`).
+
+### Reference sources
+
+`--reference sources/` compares every document of `in_dir` with the documents of `sources/` (a file or a directory,
+any supported format; repeat the option for several). By default the documents are also compared with each other;
+`--reference-only` skips that. References are never compared with each other, and a single document in `in_dir` is
+enough.
+
+References are marked with a `source` badge in the report; in the matrix, cells between two references are empty.
+In a pair, the coverage of the reference is the share of the source that was reused. References from a directory are
+named `<directory name>/<file name>`, and their names must differ from the documents' names. The JSON export gives
+every document a `role` (`submission` or `reference`) and records `references` in `options`; the CSV gains `role_1`
+and `role_2` columns.
 
 ### Templates and shared text
 
@@ -189,12 +205,14 @@ report = results.save("results/api", report="pages")
 - `Document.from_path(path)`, `Document.from_bytes(data, name, format=None)` and `Document.from_text(text, name)`
   build a document; a `Document` holds its `name`, display `text`, lowercase `words` and the `spans` of the words.
 - `compare_documents(documents, block_size=2, engine="shingle", normalize=(), stopwords=(), ignore_quotes=False,
-  ignore_bibliography=False, templates=(), ignore_common=None, progress=None)` returns
-  `Results`: the documents and one `Pair` per pair (`i`, `j`, `coverage_i`, `coverage_j`, `ratio`, matching
-  `blocks`). `normalize=["accents"]` and `stopwords=stopword_list("en", "fr")` are the `--normalize` and
-  `--stopwords` options; `ignore_quotes=True`, `ignore_bibliography=True`, `templates=[Document, ...]` and
-  `ignore_common=50` the exclusion options. `Results.options`
-  records the options in use and `Results.excluded` the excluded word runs of each document.
+  ignore_bibliography=False, templates=(), ignore_common=None, references=(), compare_submissions=True,
+  progress=None)` returns `Results`: the documents and one `Pair` per compared pair (`i`, `j`, `coverage_i`,
+  `coverage_j`, `ratio`, matching `blocks`). `normalize=["accents"]` and `stopwords=stopword_list("en", "fr")` are
+  the `--normalize` and `--stopwords` options; `ignore_quotes=True`, `ignore_bibliography=True`,
+  `templates=[Document, ...]` and `ignore_common=50` the exclusion options; `references=[Document, ...]` and
+  `compare_submissions=False` the `--reference` and `--reference-only` options. `Results.options` records the options
+  in use, `Results.excluded` the excluded word runs of each document and `Results.references` the indexes of the
+  reference sources.
 - `Results.ranked(score)`, `pair(a, b)`, `to_dict`, `to_json`, `to_csv`, `to_html`, `to_html_pages` and `save` take
   the score mode and thresholds when rendering, so one comparison can be shown several ways.
 - `load_directory(directory, recursive=False, on_skip=None, progress=None)` reports skipped files to `on_skip`;

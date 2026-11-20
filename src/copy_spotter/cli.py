@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import sys
 import webbrowser
+from collections import Counter
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -92,12 +94,18 @@ def parse_percentage(text: str) -> float:
     return value
 
 
-def load_paths(paths: Sequence[Path], on_skip: Callable[[Skipped], None]) -> list[Document]:
-    """Read the documents given as files or directories (the supported files directly inside each directory)."""
+def load_paths(paths: Sequence[Path], on_skip: Callable[[Skipped], None], *, prefix: bool = False) -> list[Document]:
+    """Read the documents given as files or directories (the supported files directly inside each directory).
+
+    With ``prefix``, documents of a directory are named ``<directory name>/<file name>``.
+    """
     documents: list[Document] = []
     for path in paths:
         if path.is_dir():
-            documents += load_directory(path, on_skip=on_skip)
+            found = load_directory(path, on_skip=on_skip)
+            if prefix:
+                found = [dataclasses.replace(d, name=f"{path.resolve().name}/{d.name}") for d in found]
+            documents += found
         elif path.is_file():
             try:
                 documents.append(Document.from_path(path))
@@ -187,6 +195,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="leave out of the matching the passages found in more than PCT%% of the documents (and in at least 3)",
     )
     parser.add_argument(
+        "--reference",
+        action="append",
+        type=Path,
+        default=[],
+        metavar="FILE_OR_DIR",
+        help="reference sources (articles, past essays) to compare every document with; references are not "
+        "compared with each other (repeatable; a directory means every document in it)",
+    )
+    parser.add_argument(
+        "--reference-only",
+        action="store_true",
+        help="with --reference, compare each document with the references only, not with the other documents",
+    )
+    parser.add_argument(
         "--report",
         choices=REPORT_LAYOUTS,
         default="single",
@@ -223,19 +245,33 @@ def run(args: argparse.Namespace) -> Path:
     out_dir: Path = (args.out_dir or Path("results") / datetime.now().strftime("%Y%m%d_%H%M%S")).resolve()
 
     progress = TqdmProgress()
+    if args.reference_only and not args.reference:
+        raise CopySpotterError("--reference-only needs at least one --reference")
+    if args.reference_only and args.ignore_common is not None:
+        raise CopySpotterError(
+            "--ignore-common counts the documents sharing a passage: it cannot be used with --reference-only"
+        )
     templates = load_paths(args.exclude, _warn_skipped)
+    references = load_paths(args.reference, _warn_skipped, prefix=True)
     documents = load_directory(
         in_dir,
         recursive=args.recursive,
-        exclude=[out_dir, *args.exclude],
+        exclude=[out_dir, *args.exclude, *args.reference],
         on_skip=_warn_skipped,
         progress=progress,
     )
-    if len(documents) < 2:
+    needed = 1 if references else 2
+    if len(documents) < needed:
         raise CopySpotterError(
-            f"Need at least two readable documents in {in_dir}, found {len(documents)}. "
-            f"Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}"
+            f"Need at least {'one readable document' if references else 'two readable documents'} in {in_dir}, "
+            f"found {len(documents)}. Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}"
         )
+    if args.reference and not references:
+        raise CopySpotterError("No readable reference document found")
+    clashes = sorted({d.name for d in documents} & {r.name for r in references})
+    clashes += sorted(name for name, count in Counter(r.name for r in references).items() if count > 1)
+    if clashes:
+        raise CopySpotterError(f"Documents and references must have different names, found: {', '.join(clashes)}")
     results = compare_documents(
         documents,
         block_size=args.block_size,
@@ -246,6 +282,8 @@ def run(args: argparse.Namespace) -> Path:
         ignore_bibliography=args.ignore_bibliography,
         templates=templates,
         ignore_common=args.ignore_common,
+        references=references,
+        compare_submissions=not args.reference_only,
         progress=progress,
     )
 

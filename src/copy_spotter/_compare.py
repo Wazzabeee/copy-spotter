@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 
@@ -20,7 +20,17 @@ from copy_spotter._normalize import Normalization, check_normalize, normalize_do
 from copy_spotter._options import ScoreMode, check_block_size
 from copy_spotter._progress import ProgressCallback, emit
 from copy_spotter._results import Results
-from copy_spotter.similarity import DEFAULT_ENGINE, ENGINES, Comparison, Engine, Match, compare, compare_all, coverage
+from copy_spotter.similarity import (
+    DEFAULT_ENGINE,
+    ENGINES,
+    Comparison,
+    Engine,
+    Match,
+    ShingleIndex,
+    compare,
+    compare_all,
+    coverage,
+)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -82,12 +92,14 @@ def compare_documents(
     ignore_bibliography: bool = False,
     templates: Sequence[Document] = (),
     ignore_common: float | None = None,
+    references: Sequence[Document] = (),
+    compare_submissions: bool = True,
     progress: ProgressCallback | None = None,
 ) -> Results:
-    """Compare every pair of documents.
+    """Compare every pair of documents, and each document with reference sources.
 
     Args:
-        documents: The documents to compare; their names must be unique.
+        documents: The documents to compare (the submissions); their names must be unique.
         block_size: Minimum number of consecutive identical words that count as a match.
         engine: ``"shingle"`` finds copied passages in any order; ``"difflib"`` is the legacy in-order matcher.
         normalize: ``("accents",)`` folds accents and compatibility characters before matching, so "élève"
@@ -104,29 +116,45 @@ def compare_documents(
             with each other and are not part of the results.
         ignore_common: A percentage: passages found in more than this share of the documents (and in at least
             three of them) are left out of the matching, as text that everyone shares rather than copied text.
-            The documents are compared twice.
+            The documents are compared twice. Only submissions are counted, and it needs ``compare_submissions``.
+        references: Sources to compare every submission with, such as articles or last year's essays. A
+            reference is never compared with another reference. In the results the references come after the
+            submissions, and ``Results.references`` holds their indexes.
+        compare_submissions: Also compare the submissions with each other (the default). ``False`` compares each
+            submission with the references only.
         progress: Called with a :class:`Progress` event (stage ``"compare"``) before the first pair and after
             each pair.
 
     Returns:
-        The scores and matching blocks of every pair, in ``itertools.combinations`` order. With ``normalize`` or
-        ``stopwords``, ``Results.documents`` holds the normalized documents: same names and text, normalized
-        words, and no stopwords in ``words`` and ``spans``, so that blocks index the words that were matched.
+        The scores and matching blocks of every compared pair, in ``itertools.combinations`` order. With
+        ``normalize`` or ``stopwords``, ``Results.documents`` holds the normalized documents: same names and
+        text, normalized words, and no stopwords in ``words`` and ``spans``, so that blocks index the words that
+        were matched.
         Excluded passages are listed in ``Results.excluded``; their words never match but still count in the
         scores, so excluding passages can only lower them.
 
     Raises:
         ValueError: ``block_size`` is below 1, ``engine`` or a normalization is unknown, ``ignore_common`` is not
-            within 0 (excluded) and 100, or two documents have the same name.
+            within 0 (excluded) and 100 or is used without ``compare_submissions``, or two documents (references
+            included) have the same name.
     """
     check_block_size(block_size)
     if engine not in ENGINES:
         raise ValueError(f"engine must be one of {', '.join(ENGINES)}, got {engine!r}")
+    submissions = len(documents)
+    documents = [*documents, *references]
     duplicates = sorted(name for name, count in Counter(document.name for document in documents).items() if count > 1)
     if duplicates:
         raise ValueError(f"document names must be unique, found duplicates: {', '.join(duplicates)}")
     if ignore_common is not None and not 0 < ignore_common <= 100:
         raise ValueError(f"ignore_common must be a percentage above 0 and at most 100, got {ignore_common}")
+    if ignore_common is not None and not compare_submissions:
+        raise ValueError("ignore_common needs compare_submissions: it counts the submissions sharing a passage")
+    indexes = [
+        (i, j)
+        for i, j in combinations(range(len(documents)), 2)
+        if (j < submissions and compare_submissions) or i < submissions <= j
+    ]
     normalizations = check_normalize(normalize)
     stopword_set = frozenset(word.lower() for word in stopwords)
     accents = "accents" in normalizations
@@ -155,21 +183,25 @@ def compare_documents(
         options.update({"ignore_bibliography": True} if ignore_bibliography else {})
         options.update({"templates": [t.name for t in templates]} if templates else {})
 
-    total = len(documents) * (len(documents) - 1) // 2 * (1 if ignore_common is None else 2)
-    pairs = _compare_all_pairs(_masked(documents, excluded), block_size, engine, progress, total=total)
+    if references:
+        options["references"] = len(references)
+        options.update({} if compare_submissions else {"compare_submissions": False})
+    total = len(indexes) * (1 if ignore_common is None else 2)
+    pairs = _compare_pairs(_masked(documents, excluded), indexes, block_size, engine, progress, total=total)
     if ignore_common is not None:
         options["ignore_common"] = ignore_common
         # "More than ignore_common % of the documents", and never fewer than three: two documents sharing a
         # passage is what copy-spotter looks for, not boilerplate.
-        min_documents = max(3, int(len(documents) * ignore_common / 100) + 1)
-        common = common_runs([len(d.words) for d in documents], ((p.i, p.j, p.blocks) for p in pairs), min_documents)
+        min_documents = max(3, int(submissions * ignore_common / 100) + 1)
+        among_submissions = ((p.i, p.j, p.blocks) for p in pairs if p.j < submissions)
+        common = common_runs([len(d.words) for d in documents], among_submissions, min_documents)
         if any(common):
             excluded = tuple(
                 merge([*runs, *(Excluded(start, size, "common") for start, size in extra)])
                 for runs, extra in zip(excluded or ((),) * len(documents), common, strict=True)
             )
-            pairs = _compare_all_pairs(
-                _masked(documents, excluded), block_size, engine, progress, total=total, offset=len(pairs)
+            pairs = _compare_pairs(
+                _masked(documents, excluded), indexes, block_size, engine, progress, total=total, offset=len(pairs)
             )
         else:
             emit(progress, "compare", total, total)
@@ -180,6 +212,7 @@ def compare_documents(
         engine=engine,
         options=options,
         excluded=excluded,
+        references=tuple(range(submissions, len(documents))),
     )
 
 
@@ -190,8 +223,9 @@ def _masked(documents: Sequence[Document], excluded: Sequence[Sequence[Excluded]
     return [masked_words(d.words, k, runs) for k, (d, runs) in enumerate(zip(documents, excluded, strict=True))]
 
 
-def _compare_all_pairs(
+def _compare_pairs(
     words: list[list[str]],
+    indexes: list[tuple[int, int]],
     block_size: int,
     engine: Engine,
     progress: ProgressCallback | None,
@@ -199,13 +233,28 @@ def _compare_all_pairs(
     total: int,
     offset: int = 0,
 ) -> list[Pair]:
-    indexes = list(combinations(range(len(words)), 2))
     pairs = []
-    # One shared index for the whole corpus (shingle engine): same results as compare_pair() on each pair.
-    comparisons = compare_all(words, block_size, engine)
+    if len(indexes) == len(words) * (len(words) - 1) // 2:
+        # Every pair: one shared index for the whole corpus (shingle engine), same results as compare_pair().
+        comparisons: Iterable[Comparison] = compare_all(words, block_size, engine)
+    else:
+        comparisons = _selected(words, indexes, block_size, engine)
     if offset == 0:
         emit(progress, "compare", 0, total)
     for (i, j), comparison in zip(indexes, comparisons, strict=True):
         pairs.append(_make_pair(i, j, comparison, len(words[i]), len(words[j])))
         emit(progress, "compare", offset + len(pairs), total)
     return pairs
+
+
+def _selected(
+    words: list[list[str]], indexes: list[tuple[int, int]], block_size: int, engine: Engine
+) -> Iterator[Comparison]:
+    """Compare only the given pairs, still indexing each document once with the shingle engine."""
+    if engine == "shingle":
+        index = ShingleIndex(words, block_size)
+        for i, j in indexes:
+            yield index.compare(i, j)
+    else:
+        for i, j in indexes:
+            yield compare(words[i], words[j], block_size, engine)

@@ -18,6 +18,10 @@
   assignment prompt, and `--ignore-common PCT` the passages found in more than PCT% of the documents (and in at least
   three). Python API: `compare_documents(templates=..., ignore_common=...)`. `load_directory` and `find_documents`
   accept several paths in `exclude`.
+- `--reference FILE_OR_DIR` compares every document with reference sources as well (`--reference-only`: with the
+  sources only). References are never compared with each other, are marked as sources in the reports, and get a
+  `role` in the JSON export and `role_1`/`role_2` CSV columns. Python API:
+  `compare_documents(references=..., compare_submissions=...)`, `Results.references` and `Results.is_reference()`.
 - Scores take document length into account: each pair now has two directional coverage scores, the percentage of
   each document found in the other. A short text fully copied into a long document scores 100% in that direction.
 - The similarity matrix is no longer symmetric: the cell at row A, column B is the percentage of A found in B.
