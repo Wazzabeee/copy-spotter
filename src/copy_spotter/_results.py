@@ -35,8 +35,13 @@ def describe_options(options: Mapping[str, object]) -> str:
     if options.get("stopwords"):
         parts.append(f"{options['stopwords']} stopwords ignored")
     ignored = [name for key, name in _IGNORED_PASSAGES if options.get(key)]
+    templates = options.get("templates")
+    if isinstance(templates, list) and templates:
+        ignored.append(f"text of {len(templates)} template{'s' if len(templates) > 1 else ''}")
+    if options.get("ignore_common") is not None:
+        ignored.append(f"passages in more than {options['ignore_common']:g}% of the documents")
     if ignored:
-        parts.append(f"{' and '.join(ignored)} ignored")
+        parts.append(f"{', '.join(ignored)} ignored")
     return "".join(f", {part}" for part in parts)
 
 
@@ -54,7 +59,8 @@ class Results:
         engine: The matching engine used.
         options: The matching options that were turned on, as JSON values, for instance
             ``{"normalize": ["accents"], "stopwords": 174}`` (the number of stopwords). Empty by default.
-        excluded: The passages left out of the matching (quotations, bibliography), one tuple of
+        excluded: The passages left out of the matching (quotations, bibliography, template text, common
+            passages), one tuple of
             :class:`Excluded` word runs per document, sorted and non-overlapping. Empty (``()``) when no passage
             was excluded.
     """

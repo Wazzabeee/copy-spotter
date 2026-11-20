@@ -59,6 +59,8 @@ EXCLUDED_STYLE = "color: #8c8c8c"
 EXCLUDED_TITLES = {
     "quote": "Quotation: left out of the matching",
     "bibliography": "Bibliography: left out of the matching",
+    "template": "Found in a template: left out of the matching",
+    "common": "Found in many documents: left out of the matching",
 }
 
 

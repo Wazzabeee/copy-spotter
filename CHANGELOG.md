@@ -14,6 +14,10 @@
   CJK quotation marks) and the trailing bibliography out of the matching. Excluded passages are shown in grey in the
   reports and listed in the JSON export; they still count in the document length. Python API:
   `compare_documents(ignore_quotes=..., ignore_bibliography=...)` and `Results.excluded`.
+- `--exclude FILE_OR_DIR` leaves out of the matching the passages of four words or more found in a template or
+  assignment prompt, and `--ignore-common PCT` the passages found in more than PCT% of the documents (and in at least
+  three). Python API: `compare_documents(templates=..., ignore_common=...)`. `load_directory` and `find_documents`
+  accept several paths in `exclude`.
 - Scores take document length into account: each pair now has two directional coverage scores, the percentage of
   each document found in the other. A short text fully copied into a long document scores 100% in that direction.
 - The similarity matrix is no longer symmetric: the cell at row A, column B is the percentage of A found in B.
