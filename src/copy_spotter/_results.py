@@ -156,6 +156,40 @@ class Results:
         """
         return _export.export_csv(self, score=check_score(score))
 
+    def write_json(
+        self,
+        path: str | Path,
+        *,
+        score: ScoreMode = "coverage",
+        thresholds: Iterable[float] = DEFAULT_THRESHOLDS,
+    ) -> Path:
+        """Write :meth:`to_json` to ``path`` (UTF-8) pair by pair, without building the whole text in memory.
+
+        The file has the same content as :meth:`to_json`. Its directory must exist. Returns ``path`` as a ``Path``.
+
+        Raises:
+            ValueError: Invalid ``score`` or ``thresholds``.
+        """
+        score, thresholds = check_score(score), check_thresholds(thresholds)
+        path = Path(path)
+        with path.open("w", encoding="utf-8") as out:
+            _export.write_json(self, out, score=score, thresholds=thresholds)
+        return path
+
+    def write_csv(self, path: str | Path, *, score: ScoreMode = "coverage") -> Path:
+        """Write :meth:`to_csv` to ``path`` (UTF-8) row by row; same content as :meth:`to_csv`.
+
+        Its directory must exist. Returns ``path`` as a ``Path``.
+
+        Raises:
+            ValueError: Invalid ``score``.
+        """
+        score = check_score(score)
+        path = Path(path)
+        with path.open("w", encoding="utf-8", newline="") as out:
+            _export.write_csv(self, out, score=score)
+        return path
+
     def to_html(
         self,
         *,

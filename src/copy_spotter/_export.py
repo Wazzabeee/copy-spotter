@@ -55,24 +55,22 @@ from __future__ import annotations
 import csv
 import io
 import json
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, Any, TextIO
 
 from copy_spotter._options import DEFAULT_THRESHOLDS, ScoreMode
 from copy_spotter._version import __version__
 
 if TYPE_CHECKING:
+    from copy_spotter._compare import Pair
     from copy_spotter._results import Results
 
 EXPORT_VERSION = 1
 CSV_FIELDS = ("document_1", "document_2", "coverage_1", "coverage_2", "ratio", "matched_words", "block_count")
 
 
-def export_data(
-    results: Results, *, score: ScoreMode = "coverage", thresholds: Sequence[float] = DEFAULT_THRESHOLDS
-) -> dict[str, Any]:
-    """Return the JSON export as a dict (see the module docstring for the shape)."""
-    names = [document.name for document in results.documents]
+def _header(results: Results, score: ScoreMode, thresholds: Sequence[float]) -> dict[str, Any]:
+    """Return every field of the JSON export but ``pairs``, in the export's key order."""
     data: dict[str, Any] = {
         "version": EXPORT_VERSION,
         "copy_spotter_version": __version__,
@@ -93,35 +91,79 @@ def export_data(
     for document, runs in zip(documents, results.excluded, strict=False):
         document["excluded_words"] = sum(run.size for run in runs)
         document["excluded"] = [{"start": run.start, "size": run.size, "reason": run.reason} for run in runs]
-    return data | {
-        "documents": documents,
-        "pairs": [
-            {
-                "document_1": names[p.i],
-                "document_2": names[p.j],
-                "index_1": p.i,
-                "index_2": p.j,
-                "coverage_1": p.coverage_i,
-                "coverage_2": p.coverage_j,
-                "ratio": p.ratio,
-                "matched_words": p.matched_words,
-                "blocks": [{"start_1": m.a, "start_2": m.b, "size": m.size} for m in p.blocks],
-            }
-            for p in results.ranked(score)
-        ],
+    data["documents"] = documents
+    return data
+
+
+def _pair_record(names: Sequence[str], p: Pair) -> dict[str, Any]:
+    return {
+        "document_1": names[p.i],
+        "document_2": names[p.j],
+        "index_1": p.i,
+        "index_2": p.j,
+        "coverage_1": p.coverage_i,
+        "coverage_2": p.coverage_j,
+        "ratio": p.ratio,
+        "matched_words": p.matched_words,
+        "blocks": [{"start_1": m.a, "start_2": m.b, "size": m.size} for m in p.blocks],
     }
+
+
+def export_data(
+    results: Results, *, score: ScoreMode = "coverage", thresholds: Sequence[float] = DEFAULT_THRESHOLDS
+) -> dict[str, Any]:
+    """Return the JSON export as a dict (see the module docstring for the shape)."""
+    names = [document.name for document in results.documents]
+    return _header(results, score, thresholds) | {
+        "pairs": [_pair_record(names, p) for p in results.ranked(score)],
+    }
+
+
+def iter_json(
+    results: Results, *, score: ScoreMode = "coverage", thresholds: Sequence[float] = DEFAULT_THRESHOLDS
+) -> Iterator[str]:
+    """Yield the JSON export in chunks, one per pair, so that it never has to be held in memory at once.
+
+    The chunks joined are exactly ``json.dumps(export_data(...), ensure_ascii=False, indent=2) + "\\n"``: the header
+    (every field but ``pairs``, which comes last) is dumped with an empty pair list, then each pair is dumped alone
+    and indented to its depth in the list.
+    """
+    head = json.dumps(_header(results, score, thresholds) | {"pairs": []}, ensure_ascii=False, indent=2)
+    ranked = results.ranked(score)
+    if not ranked:
+        yield head + "\n"
+        return
+    yield head.removesuffix("[]\n}") + "["
+    names = [document.name for document in results.documents]
+    separator = "\n" + " " * 4
+    for k, p in enumerate(ranked):
+        # json.dumps escapes line breaks inside strings, so every "\n" here is between two lines of the layout.
+        body = json.dumps(_pair_record(names, p), ensure_ascii=False, indent=2).replace("\n", separator)
+        yield ("," if k else "") + separator + body
+    yield "\n  ]\n}\n"
 
 
 def export_json(
     results: Results, *, score: ScoreMode = "coverage", thresholds: Sequence[float] = DEFAULT_THRESHOLDS
 ) -> str:
     """Return the JSON export as indented text ending with a newline."""
-    return json.dumps(export_data(results, score=score, thresholds=thresholds), ensure_ascii=False, indent=2) + "\n"
+    return "".join(iter_json(results, score=score, thresholds=thresholds))
 
 
-def export_csv(results: Results, *, score: ScoreMode = "coverage") -> str:
-    """Return the CSV export: a header and one row per pair, each ending with ``\\r\\n``."""
-    out = io.StringIO()
+def write_json(
+    results: Results,
+    out: TextIO,
+    *,
+    score: ScoreMode = "coverage",
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
+) -> None:
+    """Write the JSON export to a text file, pair by pair."""
+    for chunk in iter_json(results, score=score, thresholds=thresholds):
+        out.write(chunk)
+
+
+def write_csv(results: Results, out: TextIO, *, score: ScoreMode = "coverage") -> None:
+    """Write the CSV export to a text file opened with ``newline=""``, row by row."""
     writer = csv.writer(out)
     roles = ("role_1", "role_2") if results.references else ()
     writer.writerow((*CSV_FIELDS, *roles))
@@ -131,4 +173,10 @@ def export_csv(results: Results, *, score: ScoreMode = "coverage") -> str:
         if roles:
             row += ["reference" if results.is_reference(k) else "submission" for k in (p.i, p.j)]
         writer.writerow(row)
+
+
+def export_csv(results: Results, *, score: ScoreMode = "coverage") -> str:
+    """Return the CSV export: a header and one row per pair, each ending with ``\\r\\n``."""
+    out = io.StringIO()
+    write_csv(results, out, score=score)
     return out.getvalue()

@@ -3,12 +3,15 @@ from __future__ import annotations
 import csv
 import io
 import json
+from pathlib import Path
 
-from copy_spotter import __version__
-from copy_spotter._export import CSV_FIELDS, export_csv, export_data, export_json
+import pytest
+
+from copy_spotter import Document, __version__, compare_documents, load_directory
+from copy_spotter._export import CSV_FIELDS, export_csv, export_data, export_json, iter_json
 from copy_spotter.similarity import Match
 
-from .conftest import make_document, make_pair, make_results
+from .conftest import PLAGIARISM_DIR, make_document, make_pair, make_results
 
 NAMES = ["a.txt", "b, with comma.txt", "c.txt"]
 DOCUMENTS = [make_document(t) for t in ("X y z.", "x Y w v", "q")]
@@ -76,3 +79,85 @@ def test_export_csv() -> None:
     }
     ratio_rows = list(csv.DictReader(io.StringIO(export_csv(RESULTS, score="ratio"))))
     assert [r["ratio"] for r in ratio_rows] == ["57.143", "55.5", "0.0"]
+
+
+# Names that stress JSON escaping: quotes, a backslash, a line break, non-ASCII, a CSV separator.
+ODD_NAMES = ['é "quoted".txt', "back\\slash\nnewline.txt", "日本語, comma.txt"]
+EMPTY = make_results(["a.txt", "b.txt"], [], [make_document("a"), make_document("b")])
+
+_QUOTED = 'He wrote "the cat sat on the mat and then it slept all day long" in his notes about the old house.'
+_SOURCE = "Every story says the cat sat on the mat and then it slept all day long near the warm fire."
+_TEMPLATE = "Name: Student number: Course: Introduction to the history of art."
+
+
+def _with_features():  # type: ignore[no-untyped-def]
+    """Results that use every export field the matching options add: options, roles, exclusions."""
+    submissions = [
+        Document.from_text(f"Name: Student number: Course: Introduction to the history of art. {_QUOTED}", "s1.txt"),
+        Document.from_text(f"Name: Student number: Course: Introduction to the history of art. {_SOURCE}", "s2.txt"),
+    ]
+    return compare_documents(
+        submissions,
+        block_size=3,
+        normalize=["accents"],
+        stopwords=["of"],
+        ignore_quotes=True,
+        ignore_bibliography=True,
+        templates=[Document.from_text(_TEMPLATE, "template.txt")],
+        references=[Document.from_text(_SOURCE, "source.txt")],
+    )
+
+
+def _reference_json(results, **options) -> str:  # type: ignore[no-untyped-def]
+    """The JSON export as it was written before streaming: one json.dumps of the whole dict."""
+    return json.dumps(export_data(results, **options), ensure_ascii=False, indent=2) + "\n"
+
+
+@pytest.mark.parametrize(
+    "results",
+    [
+        RESULTS,
+        make_results(ODD_NAMES, PAIRS, DOCUMENTS),
+        EMPTY,
+        compare_documents(load_directory(PLAGIARISM_DIR)),
+        _with_features(),
+    ],
+    ids=["small", "odd-names", "no-pairs", "plagiarism-dir", "options-references-exclusions"],
+)
+@pytest.mark.parametrize("score", ["coverage", "ratio"])
+def test_streamed_json_is_byte_identical_to_one_dump(results, score) -> None:  # type: ignore[no-untyped-def]
+    reference = _reference_json(results, score=score, thresholds=(1, 2, 3))
+    chunks = list(iter_json(results, score=score, thresholds=(1, 2, 3)))
+    assert "".join(chunks) == reference
+    assert export_json(results, score=score, thresholds=(1, 2, 3)) == reference
+    assert len(chunks) == (len(results.pairs) + 2 if results.pairs else 1)  # header, one chunk per pair, end
+
+
+def test_write_json_and_write_csv_match_the_strings(tmp_path: Path) -> None:
+    results = make_results(ODD_NAMES, PAIRS, DOCUMENTS)
+    json_path = results.write_json(tmp_path / "pairs.json", score="ratio", thresholds=(1, 2, 3))
+    csv_path = results.write_csv(str(tmp_path / "pairs.csv"), score="ratio")
+    assert json_path == tmp_path / "pairs.json"
+    assert csv_path == tmp_path / "pairs.csv"
+    # Text mode: compare as text so that Windows line endings in the JSON file do not matter.
+    assert json_path.read_text(encoding="utf-8") == results.to_json(score="ratio", thresholds=(1, 2, 3))
+    assert csv_path.read_bytes() == results.to_csv(score="ratio").encode("utf-8")
+
+
+def test_write_json_and_write_csv_check_their_options(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="thresholds"):
+        RESULTS.write_json(tmp_path / "pairs.json", thresholds=(3, 2, 1))
+    with pytest.raises(ValueError, match="score"):
+        RESULTS.write_csv(tmp_path / "pairs.csv", score="best")  # type: ignore[arg-type]
+    assert not list(tmp_path.iterdir())
+
+
+def test_streamed_exports_carry_the_option_fields(tmp_path: Path) -> None:
+    results = _with_features()
+    data = json.loads("".join(iter_json(results)))
+    assert set(data["options"]) >= {"normalize", "stopwords", "ignore_quotes", "templates", "references"}
+    assert [d["role"] for d in data["documents"]] == ["submission", "submission", "reference"]
+    assert any(d["excluded"] for d in data["documents"])
+    path = results.write_csv(tmp_path / "pairs.csv")
+    assert path.read_bytes() == results.to_csv().encode("utf-8")
+    assert path.read_text(encoding="utf-8").splitlines()[0].endswith(",role_1,role_2")
