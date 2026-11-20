@@ -41,6 +41,7 @@ def report_data(
     ``text`` is the document's display text and ``spans[k]`` the character range of its k-th word.
     A document may also have ``"excluded": [[start, size, reason], ...]``: word runs left out of the matching
     (``reason`` is ``"quote"``, ``"bibliography"``, ``"template"`` or ``"common"``), shown in grey.
+    A reference source has ``"reference": true``; references are never paired with each other.
     A block ``[a, b, size]`` means words ``a .. a+size-1`` of document ``i`` equal words ``b .. b+size-1``
     of document ``j``; blocks may be in any order on either side. ``coverage_i`` is the percentage of
     document ``i`` found in ``j``, ``coverage_j`` the reverse, ``ratio`` the symmetric score of the engine.
@@ -49,6 +50,8 @@ def report_data(
     documents: list[dict[str, Any]] = [
         {"name": doc.name, "text": doc.text, "spans": [list(span) for span in doc.spans]} for doc in results.documents
     ]
+    for index in results.references:
+        documents[index]["reference"] = True
     for document, runs in zip(documents, results.excluded, strict=False):
         if runs:
             document["excluded"] = [[run.start, run.size, run.reason] for run in runs]
@@ -92,6 +95,6 @@ def render_single(
 
 def _addon(data: dict[str, Any]) -> str:
     """Return the script of the optional features the report uses, or ``""`` (the page is then unchanged)."""
-    if any("excluded" in document for document in data["documents"]):
+    if any("excluded" in document or "reference" in document for document in data["documents"]):
         return _template("single_addon.html")
     return ""

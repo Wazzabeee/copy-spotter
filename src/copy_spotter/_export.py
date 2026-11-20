@@ -42,6 +42,11 @@ matching; ``word_count`` and word positions then count the remaining words only)
 ``"quote"``, ``"bibliography"``, ``"template"`` or ``"common"``: excluded words never match but still count in
 ``word_count`` and the coverages.
 
+With reference sources (``--reference``), ``options`` has ``"references": int`` (how many) and
+``"compare_submissions": false`` when submissions were only compared with the references; each document has
+``"role": "submission" | "reference"``; references come after the submissions and are never paired with each
+other, so ``document_2`` is the reference in a mixed pair. The CSV then gains ``role_1`` and ``role_2`` columns.
+
 CSV columns: ``document_1, document_2, coverage_1, coverage_2, ratio, matched_words, block_count``.
 """
 
@@ -82,6 +87,9 @@ def export_data(
         {"index": k, "name": document.name, "word_count": len(document.words)}
         for k, document in enumerate(results.documents)
     ]
+    if results.references:
+        for k, document in enumerate(documents):
+            document["role"] = "reference" if results.is_reference(k) else "submission"
     for document, runs in zip(documents, results.excluded, strict=False):
         document["excluded_words"] = sum(run.size for run in runs)
         document["excluded"] = [{"start": run.start, "size": run.size, "reason": run.reason} for run in runs]
@@ -115,8 +123,12 @@ def export_csv(results: Results, *, score: ScoreMode = "coverage") -> str:
     """Return the CSV export: a header and one row per pair, each ending with ``\\r\\n``."""
     out = io.StringIO()
     writer = csv.writer(out)
-    writer.writerow(CSV_FIELDS)
+    roles = ("role_1", "role_2") if results.references else ()
+    writer.writerow((*CSV_FIELDS, *roles))
     names = [document.name for document in results.documents]
     for p in results.ranked(score):
-        writer.writerow([names[p.i], names[p.j], p.coverage_i, p.coverage_j, p.ratio, p.matched_words, len(p.blocks)])
+        row = [names[p.i], names[p.j], p.coverage_i, p.coverage_j, p.ratio, p.matched_words, len(p.blocks)]
+        if roles:
+            row += ["reference" if results.is_reference(k) else "submission" for k in (p.i, p.j)]
+        writer.writerow(row)
     return out.getvalue()

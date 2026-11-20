@@ -64,6 +64,18 @@ EXCLUDED_TITLES = {
 }
 
 
+REFERENCE_BADGE = (
+    ' <span class="reference" title="Reference source" style="font-size: 0.75em; font-weight: normal; '
+    'color: #555; border: 1px solid #aaa; border-radius: 3px; padding: 0 3px">source</span>'
+)
+
+
+def _label(results: Results, index: int) -> str:
+    """Return the escaped name of a document, followed by a "source" badge for a reference."""
+    name = escape(results.documents[index].name)
+    return name + REFERENCE_BADGE if results.is_reference(index) else name
+
+
 def highlight(document: Document, spans: Iterable[tuple[int, int, int]], excluded: Iterable[Excluded] = ()) -> str:
     """Return the document's text as HTML, wrapping each ``(start, size, color_index)`` word range in a colored tag.
 
@@ -116,8 +128,8 @@ def render_comparison(
         _template("comparison.html"),
         title=escape(f"{names[0]} vs {names[1]}"),
         score=_comparison_score(names, pair, score_mode, thresholds),
-        left_name=escape(names[0]),
-        right_name=escape(names[1]),
+        left_name=_label(results, pair.i),
+        right_name=_label(results, pair.j),
         left=left,
         right=right,
     )
@@ -172,19 +184,20 @@ def render_results(
         shown = p.scores(score_mode)[:1] if score_mode == "ratio" else p.scores(score_mode)
         links = "".join(f"<td>{_score_link(p, s, thresholds)}</td>" for s in shown)
         pair_rows.append(
-            f'<tr>{links}<td class="name">{escape(names[p.i])}</td><td class="name">{escape(names[p.j])}</td></tr>'
+            f'<tr>{links}<td class="name">{_label(results, p.i)}</td><td class="name">{_label(results, p.j)}</td></tr>'
         )
 
-    header = "".join(f'<th class="name" title="{escape(n)}">{escape(n)}</th>' for n in names)
+    header = "".join(f'<th class="name" title="{escape(n)}">{_label(results, k)}</th>' for k, n in enumerate(names))
     matrix_rows = [f'<tr><th class="name"></th>{header}</tr>']
     for i, name in enumerate(names):
         cells = []
         for j in range(len(names)):
-            if i == j:
+            if i == j or (i, j) not in by_cell:  # references are not compared with each other
                 cells.append('<td class="self">-</td>')
             else:
                 cells.append(f"<td>{_score_link(*by_cell[i, j], thresholds)}</td>")
-        matrix_rows.append(f'<tr><th class="name" title="{escape(name)}">{escape(name)}</th>{"".join(cells)}</tr>')
+        label = _label(results, i)
+        matrix_rows.append(f'<tr><th class="name" title="{escape(name)}">{label}</th>{"".join(cells)}</tr>')
 
     return _render(
         _template("results.html"),
