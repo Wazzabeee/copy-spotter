@@ -22,7 +22,8 @@ const ready = (async () => {
   pyodide.runPython("import sys; sys.path.insert(0, '/home/pyodide')");
   const web = pyodide.pyimport("copy_spotter_web");
   const version = pyodide.pyimport("copy_spotter").__version__;
-  post({ type: "ready", version, seconds: (performance.now() - started) / 1000 });
+  const limits = { ...web.LIMITS.toJs({ dict_converter: Object.fromEntries }), min_block_size: web.MIN_BLOCK_SIZE };
+  post({ type: "ready", version, limits, seconds: (performance.now() - started) / 1000 });
   return { pyodide, web };
 })();
 ready.catch((error) => post({ type: "fatal", text: String(error && error.message ? error.message : error) }));
@@ -37,6 +38,7 @@ onmessage = async ({ data }) => {
     return;
   }
   const progress = (stage, done, total) => post({ type: "progress", id, stage, done, total });
+  const notice = (text) => post({ type: "notice", id, text });
   const pyFiles = pyodide.toPy(files.map((file) => [file.name, new Uint8Array(file.buffer)]), { depth: 2 });
   let result;
   try {
@@ -46,6 +48,7 @@ onmessage = async ({ data }) => {
       score: options.score,
       thresholds: options.thresholds,
       progress,
+      notice,
     });
     post({ type: "result", id, ...result.toJs({ dict_converter: Object.fromEntries }) });
   } catch (error) {

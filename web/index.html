@@ -61,8 +61,9 @@
       <summary>Options</summary>
       <div class="grid">
         <label for="block-size">Minimum match length (words)
-          <input id="block-size" type="number" min="1" step="1" value="2" inputmode="numeric">
-          <span class="hint">Runs of at least this many identical words count as copied.</span>
+          <input id="block-size" type="number" min="4" step="1" value="4" inputmode="numeric">
+          <span class="hint">Runs of at least this many identical words count as copied. At least 4 in the
+            browser: shorter runs are mostly common phrases and need much more memory.</span>
         </label>
         <label for="engine">Matching
           <select id="engine">
@@ -90,6 +91,7 @@
       <button type="button" id="run" class="primary" disabled>Compare documents</button>
       <p id="status" class="status" role="status" aria-live="polite">Add at least two documents.</p>
     </div>
+    <p id="notice" class="warning" hidden></p>
     <progress id="progress" max="1" value="0" hidden></progress>
     <p id="engine-status" class="hint">Loading the comparison program...</p>
   </section>

@@ -12,6 +12,29 @@ https://wazzabeee.github.io/copy-spotter/.
 | `build.py` | Assembles the site into `web/_site`: Pyodide runtime and packages, project wheel, dependency wheels. |
 | `smoke.mjs` | Runs a built site in Node with Pyodide and prints the CSV export; CI diffs it with the CLI's. |
 
+## Limits
+
+A tab runs Python on one thread, and its memory is capped: a wasm32 heap cannot grow past 4 GB, and browsers often
+stop well before. So the web app is stricter than the command line. The limits are in `copy_spotter_web.py`
+(`MIN_BLOCK_SIZE`, `LIMITS`), and the page receives them from the worker:
+
+| Limit | Value | Why |
+| --- | --- | --- |
+| Minimum match length | 4 words or more | Blocks of 2 or 3 words are mostly common phrases. With a block size of 2, 500 documents needed a 3.5 GB heap. |
+| Warning | more than 200 documents or 400,000 words | Shows the expected time and memory, then compares anyway. |
+| Refusal | more than 1000 documents or 2,000,000 words | Points to the command line. Too many documents are refused before any file is read. |
+
+The estimate is fitted on Pyodide runs of generated English-like documents of 1000 to 3000 words, with a block size
+of 4:
+
+| Run | Compare time | Memory (wasm heap) |
+| --- | --- | --- |
+| 200 documents, 412k words | 5 s | 270 MB |
+| 500 documents, 1M words | 48 s | 670 MB |
+| 1000 documents, 2M words | 131 s | 1.2 GB |
+
+The model is 30 MB plus 0.6 MB per 1000 words, and 0.3 s per 1000 pairs.
+
 Build and serve locally (needs network access the first time; downloads are cached in `web/.cache`):
 
 ```bash

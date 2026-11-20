@@ -31,7 +31,7 @@ def sample_files() -> list[tuple[str, bytes]]:
 
 @pytest.mark.parametrize(
     ("block_size", "engine", "score", "thresholds"),
-    [(2, "shingle", "coverage", (5.0, 10.0, 15.0)), (3, "difflib", "ratio", (10.0, 20.0, 30.0))],
+    [(4, "shingle", "coverage", (5.0, 10.0, 15.0)), (5, "difflib", "ratio", (10.0, 20.0, 30.0))],
 )
 def test_matches_library(
     web: ModuleType, block_size: int, engine: str, score: str, thresholds: tuple[float, float, float]
@@ -43,6 +43,7 @@ def test_matches_library(
     assert out["json"] == expected.to_json(score=score, thresholds=thresholds)
     assert out["csv"] == expected.to_csv(score=score)
     assert out["html"] == expected.to_html(score=score, thresholds=thresholds)
+    assert out["warning"] == ""
 
 
 def test_names_sorted_like_load_directory(web: ModuleType, tmp_path: Path) -> None:
@@ -75,3 +76,51 @@ def test_progress(web: ModuleType) -> None:
     compare = [e for e in events if e[0] == "compare"]
     assert compare[0] == ("compare", 0, 6)
     assert compare[-1] == ("compare", 6, 6)
+
+
+def test_block_size_is_at_least_four(web: ModuleType) -> None:
+    assert web.analyze(sample_files())["json"] == compare_documents(load_directory(SAMPLES), block_size=4).to_json()
+    for block_size in (1, 2, 3):
+        out = web.analyze(sample_files(), block_size=block_size)
+        assert "at least 4" in out["error"]
+
+
+def test_estimate(web: ModuleType) -> None:
+    assert web.estimate(1000, 2_000_000) == {"pairs": 499_500, "memory_mb": 1230, "seconds": 150}
+    assert web.estimate(2, 100)["pairs"] == 1
+
+
+@pytest.mark.parametrize(
+    ("documents", "words", "level"),
+    [
+        (2, 1000, "ok"),
+        (200, 400_000, "ok"),
+        (201, 1000, "warn"),
+        (10, 400_001, "warn"),
+        (1000, 2_000_000, "warn"),
+        (1001, 1000, "refuse"),
+        (10, 2_000_001, "refuse"),
+    ],
+)
+def test_check_size_levels(web: ModuleType, documents: int, words: int, level: str) -> None:
+    got, message = web.check_size(documents, words)
+    assert got == level
+    assert bool(message) == (level != "ok")
+    if level == "warn":
+        assert "MB of memory" in message
+    if level == "refuse":
+        assert "command line" in message
+
+
+def test_large_sets_get_a_notice_and_too_large_ones_are_refused(web: ModuleType) -> None:
+    notices: list[str] = []
+    files = [(f"{k:04d}.txt", f"document number {k} has a few words".encode()) for k in range(201)]
+    out = web.analyze(files, notice=notices.append)
+    assert len(out["names"]) == 201
+    assert len(notices) == 1
+    assert out["warning"] == notices[0]
+    assert notices[0].startswith("Large comparison (201 documents")
+
+    too_many = [(f"{k:04d}.txt", b"x") for k in range(1001)]
+    out = web.analyze(too_many, progress=lambda *event: pytest.fail("files read before refusing"))
+    assert "limit is 1000 documents" in out["error"]
