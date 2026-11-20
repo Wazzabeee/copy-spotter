@@ -169,6 +169,12 @@
             cursor: pointer;
         }
 
+        #more-pairs {
+            font: inherit;
+            padding: 4px 10px;
+            margin: -24px 0 32px;
+        }
+
         @media (max-width: 800px) {
             .container {
                 flex-direction: column;
@@ -198,10 +204,11 @@
             <tbody id="pairs"></tbody>
         </table>
     </div>
+    <button type="button" id="more-pairs" hidden></button>
 
     <h2>Similarity matrix</h2>
     <p class="meta" id="matrix-legend"></p>
-    <div class="table-wrap">
+    <div class="table-wrap" id="matrix-wrap">
         <table id="matrix"></table>
     </div>
 </main>
@@ -351,9 +358,16 @@
         pairsHead.append(aInB, bInA, el("th", "Document A", "name"), el("th", "Document B", "name"));
         document.getElementById("matrix-legend").textContent = "Each cell is the % of the row document found in the column document.";
     }
-    const pairRows = [];
-    const tbody = document.getElementById("pairs");
-    pairs.slice().sort(function (x, y) { return best(y) - best(x); }).forEach(function (p) {
+    // Large runs: the table shows the first PAGE_SIZE matching pairs (more on demand) and the matrix is only drawn
+    // up to MATRIX_MAX_DOCS documents, so the page stays responsive with hundreds of thousands of pairs.
+    const PAGE_SIZE = 500;
+    const MATRIX_MAX_DOCS = 150;
+
+    // Pairs by "i,j" with i < j, for the matrix and the URL hash.
+    const byPair = new Map();
+    for (const p of pairs) byPair.set(p.i + "," + p.j, p);
+
+    function pairRow(p) {
         const row = el("tr");
         const scores = ratioMode ? shown(p).slice(0, 1) : shown(p);
         for (const score of scores) {
@@ -362,41 +376,66 @@
             row.appendChild(cell);
         }
         row.append(nameCell("td", docs[p.i].name), nameCell("td", docs[p.j].name));
-        tbody.appendChild(row);
-        pairRows.push({row: row, pair: p});
-    });
+        return row;
+    }
+
+    // Pairs sorted by their highest shown score (ties keep the order of the data).
+    const sortedPairs = pairs.slice().sort(function (x, y) { return best(y) - best(x); });
+    const tbody = document.getElementById("pairs");
+    const moreButton = document.getElementById("more-pairs");
+    let matching = sortedPairs;
+    let rendered = 0;
+
+    function renderMorePairs() {
+        const stop = Math.min(matching.length, rendered + PAGE_SIZE);
+        const rows = document.createDocumentFragment();
+        for (let k = rendered; k < stop; k += 1) rows.appendChild(pairRow(matching[k]));
+        tbody.appendChild(rows);
+        rendered = stop;
+        const left = matching.length - rendered;
+        moreButton.hidden = left === 0;
+        moreButton.textContent = "Show " + Math.min(PAGE_SIZE, left) + " more pairs (" + left + " not shown)";
+        let count = "Showing " + rendered + " of " + matching.length + " matching pairs";
+        if (matching.length !== pairs.length) count += " (" + pairs.length + " pairs in total)";
+        document.getElementById("pair-count").textContent = count;
+        // Lets the optional add-on script (single_addon.html) decorate the rows that were just added.
+        document.dispatchEvent(new Event("pairs-rendered"));
+    }
+
+    moreButton.addEventListener("click", renderMorePairs);
 
     // Matrix: the cell at row i, column j is the score of i found in j.
-    const byCell = new Map();
-    for (const p of pairs) {
-        const scores = shown(p);
-        byCell.set(p.i + "," + p.j, {pair: p, score: scores[0]});
-        byCell.set(p.j + "," + p.i, {pair: p, score: scores[1]});
-    }
     const matrix = document.getElementById("matrix");
-    const head = el("tr");
-    head.appendChild(el("th", "", "name"));
-    docs.forEach(function (d) { head.appendChild(nameCell("th", d.name)); });
-    matrix.appendChild(head);
     const matrixRows = [];
     const matrixCells = [];
-    docs.forEach(function (d, i) {
-        const row = el("tr");
-        row.appendChild(nameCell("th", d.name));
-        docs.forEach(function (_, j) {
-            const entry = byCell.get(i + "," + j);
-            if (i === j || !entry) {
-                row.appendChild(el("td", "-", "self"));
-                return;
-            }
-            const cell = el("td");
-            cell.appendChild(scoreLink(entry.pair, entry.score));
-            row.appendChild(cell);
-            matrixCells.push({cell: cell, score: entry.score});
+    if (docs.length > MATRIX_MAX_DOCS) {
+        document.getElementById("matrix-wrap").hidden = true;
+        document.getElementById("matrix-legend").textContent = "The matrix is drawn for up to " + MATRIX_MAX_DOCS +
+            " documents; this run has " + docs.length + ". Use the pairs above and their filters.";
+    } else {
+        const head = el("tr");
+        head.appendChild(el("th", "", "name"));
+        docs.forEach(function (d) { head.appendChild(nameCell("th", d.name)); });
+        matrix.appendChild(head);
+        docs.forEach(function (d, i) {
+            const row = el("tr");
+            row.appendChild(nameCell("th", d.name));
+            docs.forEach(function (_, j) {
+                const p = i < j ? byPair.get(i + "," + j) : byPair.get(j + "," + i);
+                if (i === j || !p) {
+                    row.appendChild(el("td", "-", "self"));
+                    return;
+                }
+                const score = shown(p)[i < j ? 0 : 1];
+                const cell = el("td");
+                cell.appendChild(scoreLink(p, score));
+                row.appendChild(cell);
+                matrixCells.push({cell: cell, score: score});
+            });
+            matrix.appendChild(row);
+            matrixRows.push(row);
         });
-        matrix.appendChild(row);
-        matrixRows.push(row);
-    });
+    }
 
     // Filters.
     const minInput = document.getElementById("min-score");
@@ -406,13 +445,10 @@
         const min = parseFloat(minInput.value) || 0;
         const needle = nameInput.value.trim().toLowerCase();
         const matches = docs.map(function (d) { return !needle || d.name.toLowerCase().includes(needle); });
-        let visibleCount = 0;
-        for (const item of pairRows) {
-            const visible = best(item.pair) >= min && (matches[item.pair.i] || matches[item.pair.j]);
-            item.row.hidden = !visible;
-            if (visible) visibleCount += 1;
-        }
-        document.getElementById("pair-count").textContent = "Showing " + visibleCount + " of " + pairs.length + " pairs";
+        matching = sortedPairs.filter(function (p) { return best(p) >= min && (matches[p.i] || matches[p.j]); });
+        tbody.replaceChildren();
+        rendered = 0;
+        renderMorePairs();
         matrixRows.forEach(function (row, i) { row.hidden = !matches[i]; });
         for (const item of matrixCells) item.cell.classList.toggle("dim", item.score < min);
     }
@@ -423,8 +459,8 @@
     // Navigation: the URL hash selects a pair, so links and the back button work.
     function route() {
         const m = /^#pair-(\d+)-(\d+)$/.exec(location.hash);
-        const entry = m && byCell.get(m[1] + "," + m[2]);
-        if (entry) showComparison(entry.pair); else showOverview();
+        const p = m && byPair.get(m[1] + "," + m[2]);
+        if (p) showComparison(p); else showOverview();
     }
 
     document.getElementById("meta").textContent = data.meta;

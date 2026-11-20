@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -94,8 +96,26 @@ def test_page_is_self_contained() -> None:
 
 def test_page_has_filters_matrix_and_comparison_view() -> None:
     html = render_single(make_results(["a", "b"], [make_pair(0, 1, 0.0, [], 0.0, 0.0)]))
-    for element_id in ("min-score", "name-filter", "pairs", "matrix", "comparison", "left", "right"):
+    for element_id in ("min-score", "name-filter", "pairs", "more-pairs", "matrix", "matrix-wrap", "comparison"):
         assert f'id="{element_id}"' in html
+    for element_id in ("left", "right"):
+        assert f'id="{element_id}"' in html
+
+
+def test_page_limits_the_rows_and_the_matrix_of_large_runs() -> None:
+    html = render_single(make_results(["a", "b"], [make_pair(0, 1, 0.0, [], 0.0, 0.0)]))
+    # The table renders the matching pairs 500 at a time and the matrix is only drawn up to 150 documents.
+    assert "const PAGE_SIZE = 500;" in html
+    assert "const MATRIX_MAX_DOCS = 150;" in html
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs Node.js")
+def test_page_script_is_valid_javascript(tmp_path: Path) -> None:
+    html = render_single(make_results(["a", "b"], [make_pair(0, 1, 0.0, [], 0.0, 0.0)]))
+    script = html.rsplit("<script>", 1)[1].split("</script>", 1)[0]
+    path = tmp_path / "page.js"
+    path.write_text(script, encoding="utf-8")
+    subprocess.run(["node", "--check", str(path)], check=True)
 
 
 def test_save_single_report(tmp_path: Path) -> None:
@@ -193,3 +213,11 @@ def test_save_checks_its_options_before_writing(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="thresholds"):
         results.save(tmp_path / "out", thresholds=(3, 2, 1))
     assert not (tmp_path / "out").exists()
+
+
+def test_addon_decorates_rows_rendered_later() -> None:
+    # The pairs list is rendered in pages; the add-on badges reference sources in each new page of rows.
+    page = _template("single.html")
+    addon = _template("single_addon.html")
+    assert 'document.dispatchEvent(new Event("pairs-rendered"))' in page
+    assert 'document.addEventListener("pairs-rendered"' in addon

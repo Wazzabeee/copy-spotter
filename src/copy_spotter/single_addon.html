@@ -95,6 +95,8 @@
     }
 
     window.addEventListener("hashchange", update);
+    // The main script renders the pairs list in pages (and again when the filters change): badge the new rows.
+    document.addEventListener("pairs-rendered", function () { markReferences(document.querySelectorAll("#pairs .name")); });
     update();
 })();
 </script>

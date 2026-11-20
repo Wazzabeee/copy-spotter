@@ -157,6 +157,8 @@ copy-spotter data/pdf/plagiarism -s 5 -o results/output
 
 By default the report is a single file, `_results.html`, that works offline: it lists the pairs sorted by score, the
 similarity matrix, filters on minimum score and document name, and shows any pair side by side with its original text.
+On large runs the list shows the first 500 matching pairs, with a button for the next ones, and the matrix is only
+drawn up to 150 documents, so the page stays responsive with hundreds of thousands of pairs.
 With `--report pages` the results directory holds `_results.html` plus one HTML page per pair; zip it to share it.
 
 ### Exports
