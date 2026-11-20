@@ -53,6 +53,9 @@
 - The single-page report is written to disk document by document and pair by pair, so saving it no longer holds the
   page in memory several times over (120 MB down to 0.4 MB for the 59 MB page of 200 documents). The page is
   unchanged.
+- The single-page report stays responsive on large runs: the pairs list shows the first 500 pairs that match the
+  filters, with a button to show 500 more, and the matrix is drawn up to 150 documents only. The page of 1000
+  documents now opens in about 1.5 seconds; it froze the browser for minutes before. All pairs are still embedded.
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at
