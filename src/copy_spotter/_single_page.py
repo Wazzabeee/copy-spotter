@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, Any, TextIO
 
 from copy_spotter._options import DEFAULT_THRESHOLDS, ScoreMode
-from copy_spotter._report import _render, _template
+from copy_spotter._report import _PLACEHOLDER_RE, _template
 
 if TYPE_CHECKING:
+    from copy_spotter._compare import Pair
     from copy_spotter._results import Results
 
 DATA_VERSION = 1
@@ -47,31 +48,36 @@ def report_data(
     document ``i`` found in ``j``, ``coverage_j`` the reverse, ``ratio`` the symmetric score of the engine.
     Fields may be added; the page ignores fields it does not know.
     """
-    documents: list[dict[str, Any]] = [
-        {"name": doc.name, "text": doc.text, "spans": [list(span) for span in doc.spans]} for doc in results.documents
-    ]
-    for index in results.references:
-        documents[index]["reference"] = True
-    for document, runs in zip(documents, results.excluded, strict=False):
-        if runs:
-            document["excluded"] = [[run.start, run.size, run.reason] for run in runs]
     return {
-        "version": DATA_VERSION,
-        "meta": meta,
-        "score_mode": score,
-        "thresholds": list(thresholds),
-        "documents": documents,
-        "pairs": [
-            {
-                "i": p.i,
-                "j": p.j,
-                "ratio": p.ratio,
-                "coverage_i": p.coverage_i,
-                "coverage_j": p.coverage_j,
-                "blocks": [[m.a, m.b, m.size] for m in p.blocks],
-            }
-            for p in results.pairs
-        ],
+        **_header(meta, score, thresholds),
+        "documents": [_document_record(results, k) for k in range(len(results.documents))],
+        "pairs": [_pair_record(p) for p in results.pairs],
+    }
+
+
+def _header(meta: str, score: ScoreMode, thresholds: Sequence[float]) -> dict[str, Any]:
+    return {"version": DATA_VERSION, "meta": meta, "score_mode": score, "thresholds": list(thresholds)}
+
+
+def _document_record(results: Results, index: int) -> dict[str, Any]:
+    doc = results.documents[index]
+    record: dict[str, Any] = {"name": doc.name, "text": doc.text, "spans": [list(span) for span in doc.spans]}
+    if index in results.references:
+        record["reference"] = True
+    runs = results.excluded[index] if index < len(results.excluded) else ()
+    if runs:
+        record["excluded"] = [[run.start, run.size, run.reason] for run in runs]
+    return record
+
+
+def _pair_record(p: Pair) -> dict[str, Any]:
+    return {
+        "i": p.i,
+        "j": p.j,
+        "ratio": p.ratio,
+        "coverage_i": p.coverage_i,
+        "coverage_j": p.coverage_j,
+        "blocks": [[m.a, m.b, m.size] for m in p.blocks],
     }
 
 
@@ -79,6 +85,73 @@ def script_json(data: Any) -> str:
     """Serialize ``data`` as JSON that is safe inside an HTML ``<script>`` element."""
     text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     return text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
+
+
+def iter_script_json(
+    results: Results,
+    meta: str = "",
+    *,
+    score: ScoreMode = "coverage",
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
+) -> Iterator[str]:
+    """Yield ``script_json(report_data(...))`` in chunks: one per document and one per pair.
+
+    The header is dumped with empty ``documents`` and ``pairs`` lists (the last two keys, in this order), and each
+    record is dumped alone in between. JSON separators and the escaping of ``&``, ``<`` and ``>`` work character by
+    character, so the joined chunks are exactly the one-shot text.
+    """
+    head = script_json({**_header(meta, score, thresholds), "documents": [], "pairs": []})
+    end = '"documents":[],"pairs":[]}'
+    if not head.endswith(end):  # pragma: no cover - guards the key order that the slicing below relies on
+        raise AssertionError("documents and pairs must be the last keys of the report data")
+    yield head[: -len(end)] + '"documents":['
+    for k in range(len(results.documents)):
+        yield ("," if k else "") + script_json(_document_record(results, k))
+    yield '],"pairs":['
+    for k, p in enumerate(results.pairs):
+        yield ("," if k else "") + script_json(_pair_record(p))
+    yield "]}"
+
+
+def _uses_addon(results: Results) -> bool:
+    """Whether the report shows excluded passages or reference sources: the page then embeds single_addon.html."""
+    return bool(results.references) or any(results.excluded)
+
+
+def iter_single(
+    results: Results,
+    meta: str = "",
+    *,
+    score: ScoreMode = "coverage",
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
+) -> Iterator[str]:
+    """Yield the report page in chunks; joined, they are :func:`render_single`."""
+    template = _template("single.html")
+    cursor = 0
+    for placeholder in _PLACEHOLDER_RE.finditer(template):
+        yield template[cursor : placeholder.start()]
+        name = placeholder.group(1)
+        if name == "data":
+            yield from iter_script_json(results, meta, score=score, thresholds=thresholds)
+        elif name == "addon":
+            yield _template("single_addon.html") if _uses_addon(results) else ""
+        else:  # pragma: no cover - single.html only has these two placeholders
+            raise KeyError(name)
+        cursor = placeholder.end()
+    yield template[cursor:]
+
+
+def write_single(
+    results: Results,
+    out: TextIO,
+    meta: str = "",
+    *,
+    score: ScoreMode = "coverage",
+    thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
+) -> None:
+    """Write the report page to an open text file, document by document and pair by pair."""
+    for chunk in iter_single(results, meta, score=score, thresholds=thresholds):
+        out.write(chunk)
 
 
 def render_single(
@@ -89,12 +162,4 @@ def render_single(
     thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
 ) -> str:
     """Return the self-contained report page (no external resources, works from ``file://``)."""
-    data = report_data(results, meta, score=score, thresholds=thresholds)
-    return _render(_template("single.html"), data=script_json(data), addon=_addon(data))
-
-
-def _addon(data: dict[str, Any]) -> str:
-    """Return the script of the optional features the report uses, or ``""`` (the page is then unchanged)."""
-    if any("excluded" in document or "reference" in document for document in data["documents"]):
-        return _template("single_addon.html")
-    return ""
+    return "".join(iter_single(results, meta, score=score, thresholds=thresholds))
