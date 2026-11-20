@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-20)
 
 ### Breaking changes
 - The default block size is now 4 words instead of 2, for the command (`-s`, `--block-size`) and for
@@ -10,8 +10,16 @@
   lower than before; copied passages are still found (98% of the copied words of planted passages, against 98.5%).
   Comparing is about 10 times faster on large corpora, and the HTML report, JSON export and memory use are 50 to 130
   times smaller. Use `-s 2` (or `block_size=2`) for the previous behaviour.
+- The Python package is now `copy_spotter` (it was `scripts`). The `copy-spotter` command is unchanged; use
+  `python -m copy_spotter` instead of `python -m scripts.main`.
+- Each pair of documents is compared once: the report contains one page per pair instead of two, named `<i>_<j>.html`.
 
 ### Features
+- A web app runs copy-spotter in the browser, with nothing to install:
+  [wazzabeee.github.io/copy-spotter](https://wazzabeee.github.io/copy-spotter/). Files are read and compared inside
+  the browser tab and never uploaded. It reads PDF, DOCX, ODT and TXT files, offers the block size, engine,
+  score and threshold options, and gives the single-page report and the JSON and CSV exports, with limits sized
+  for a browser tab.
 - New input formats: Markdown (`.md`), HTML (`.html`, `.htm`, visible text only), Rich Text (`.rtf`) and Jupyter
   notebooks (`.ipynb`, Markdown and code cells). They are read with the standard library only and work with
   `Document.from_bytes`. HTML files next to a `_results.html` file (an earlier copy-spotter report) are skipped.
@@ -65,18 +73,16 @@
 - The single-page report stays responsive on large runs: the pairs list shows the first 500 pairs that match the
   filters, with a button to show 500 more, and the matrix is drawn up to 150 documents only. The page of 1000
   documents now opens in about 1.5 seconds; it froze the browser for minutes before. All pairs are still embedded.
+- The results page lists pairs sorted by similarity, above the matrix.
+- Each comparison page shows the score and links back to the results.
+- Deterministic, readable highlight colors.
+- New options: `--recursive`, `--no-open`, `--version`. `--out-dir` and `--block-size` are accepted next to the old
+  `--out_dir` and `--block_size` spellings.
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at
   least 2), and passages moved around count too, so scores differ from previous versions. The ratio decreases when
   the block size grows. Use `--engine difflib` for the previous results.
-
-## 0.2.0 (unreleased)
-
-### Breaking changes
-- The Python package is now `copy_spotter` (it was `scripts`). The `copy-spotter` command is unchanged; use
-  `python -m copy_spotter` instead of `python -m scripts.main`.
-- Each pair of documents is compared once: the report contains one page per pair instead of two, named `<i>_<j>.html`.
 
 ### Fixes
 - Results are written to `./results/<timestamp>` in the current directory, not in its parent.
@@ -88,13 +94,6 @@
 - Highlighting respects word boundaries ("le chat" is no longer highlighted inside "le chaton").
 - DOCX and ODT paragraphs are no longer glued together, and ODT headings are read.
 - Uppercase extensions (`.PDF`, `.TXT`) are supported.
-
-### Features
-- The results page lists pairs sorted by similarity, above the matrix.
-- Each comparison page shows the score and links back to the results.
-- Deterministic, readable highlight colors.
-- New options: `--recursive`, `--no-open`, `--version`. `--out-dir` and `--block-size` are accepted next to the old
-  `--out_dir` and `--block_size` spellings.
 
 ### Chore
 - Packaging moved to `pyproject.toml` (hatchling, version from git tags), `src/` layout, managed with uv.
