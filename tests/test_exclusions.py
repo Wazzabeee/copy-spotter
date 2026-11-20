@@ -20,6 +20,8 @@ from copy_spotter._exclusions import (
 from copy_spotter._report import highlight
 from copy_spotter.cli import main, parse_args
 
+from .conftest import make_docx
+
 QUOTED = 'As the author wrote, "the industrial revolution changed the way people lived and worked", and so on.'
 SOURCE = "Historians agree that the industrial revolution changed the way people lived and worked in cities."
 
@@ -56,6 +58,17 @@ def test_unclosed_quote_stops_at_the_paragraph_end() -> None:
     assert _quoted(text) == ['"quoted"']
     # A quotation may span a single line break (hard-wrapped text).
     assert _quoted('He wrote "first line\nsecond line" here.') == ['"first line\nsecond line"']
+
+
+def test_unclosed_quote_stops_at_a_word_processor_paragraph(tmp_path: Path) -> None:
+    # docx, odt and rtf text separate paragraphs with a single line break.
+    paragraphs = ['He measured 5" of rain today.', 'She said "hello there" to me.', 'Then "goodbye now" he replied.']
+    docx = Document.from_path(make_docx(tmp_path / "q.docx", paragraphs))
+    assert _quoted(docx.text) == ['"hello there"', '"goodbye now"']
+    rtf = Document.from_bytes(("{\\rtf1 " + "\\par ".join(paragraphs) + "}").encode(), "q.rtf")
+    assert _quoted(rtf.text) == ['"hello there"', '"goodbye now"']
+    # A line break inside a sentence is a hard wrap: the quotation goes on.
+    assert _quoted('Title "of a\nlong" work.') == ['"of a\nlong"']
 
 
 def test_words_in_ranges() -> None:
@@ -137,6 +150,8 @@ def test_bibliography_heading_joined_with_the_first_entry() -> None:
         f"{ESSAY}\n\nReferences to the war appear in many letters.",  # prose, not a heading
         f"References\n\n{ESSAY}",  # a title or table of contents at the start
         f"{ESSAY} The references are listed below.",
+        f"{ESSAY}\n\nSources however, disagree on the date.",  # lowercase word after the heading word
+        f"{ESSAY}\n\nmix. References",  # "mix" is not a roman section number
         ESSAY,
     ],
 )
