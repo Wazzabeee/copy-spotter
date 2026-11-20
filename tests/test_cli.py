@@ -205,6 +205,11 @@ def test_score_option() -> None:
         parse_args(["in", "--score", "bogus"])
 
 
+def test_default_block_size_is_four() -> None:
+    assert parse_args(["in"]).block_size == 4
+    assert parse_args(["in", "-s", "2"]).block_size == 2
+
+
 def test_legacy_flag_spellings() -> None:
     args = parse_args(["in", "--out_dir", "out", "--block_size", "5"])
     assert args.out_dir == Path("out")

@@ -84,7 +84,7 @@ def _make_pair(i: int, j: int, comparison: Comparison, len_i: int, len_j: int) -
 def compare_documents(
     documents: Sequence[Document],
     *,
-    block_size: int = 2,
+    block_size: int = 4,
     engine: Engine = DEFAULT_ENGINE,
     normalize: Iterable[Normalization] = (),
     stopwords: Iterable[str] = (),
@@ -100,7 +100,8 @@ def compare_documents(
 
     Args:
         documents: The documents to compare (the submissions); their names must be unique.
-        block_size: Minimum number of consecutive identical words that count as a match.
+        block_size: Minimum number of consecutive identical words that count as a match. The default, 4, keeps
+            the common 2 and 3 word phrases that any two texts share out of the scores.
         engine: ``"shingle"`` finds copied passages in any order; ``"difflib"`` is the legacy in-order matcher.
         normalize: ``("accents",)`` folds accents and compatibility characters before matching, so "élève"
             matches "eleve".

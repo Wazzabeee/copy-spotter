@@ -3,7 +3,7 @@
   "copy_spotter_version": "<VERSION>",
   "engine": "difflib",
   "score_mode": "ratio",
-  "block_size": 2,
+  "block_size": 4,
   "thresholds": [
     5.0,
     10.0,
@@ -59,25 +59,15 @@
       "document_2": "long.txt",
       "index_1": 0,
       "index_2": 1,
-      "coverage_1": 25.0,
-      "coverage_2": 11.667,
+      "coverage_1": 21.429,
+      "coverage_2": 10.0,
       "ratio": 17.045,
-      "matched_words": 28,
+      "matched_words": 24,
       "blocks": [
         {
           "start_1": 64,
           "start_2": 36,
           "size": 24
-        },
-        {
-          "start_1": 88,
-          "start_2": 207,
-          "size": 2
-        },
-        {
-          "start_1": 91,
-          "start_2": 233,
-          "size": 2
         }
       ]
     },
@@ -86,20 +76,15 @@
       "document_2": "notes.odt",
       "index_1": 1,
       "index_2": 2,
-      "coverage_1": 7.5,
-      "coverage_2": 40.0,
+      "coverage_1": 6.667,
+      "coverage_2": 35.556,
       "ratio": 15.439,
-      "matched_words": 18,
+      "matched_words": 16,
       "blocks": [
         {
           "start_1": 0,
           "start_2": 4,
           "size": 9
-        },
-        {
-          "start_1": 9,
-          "start_2": 18,
-          "size": 2
         },
         {
           "start_1": 121,
@@ -130,16 +115,11 @@
       "document_2": "refrain.txt",
       "index_1": 2,
       "index_2": 3,
-      "coverage_1": 15.556,
-      "coverage_2": 7.955,
+      "coverage_1": 11.111,
+      "coverage_2": 5.682,
       "ratio": 10.526,
-      "matched_words": 7,
+      "matched_words": 5,
       "blocks": [
-        {
-          "start_1": 35,
-          "start_2": 0,
-          "size": 2
-        },
         {
           "start_1": 38,
           "start_2": 79,

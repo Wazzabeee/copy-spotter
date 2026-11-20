@@ -26,6 +26,16 @@ def _docs(*texts: str) -> list[Document]:
     return [Document.from_text(text, f"{k}.txt") for k, text in enumerate(texts)]
 
 
+def test_default_block_size_leaves_short_common_phrases_out() -> None:
+    a = "the cat sat on the mat and then it slept"
+    b = "and then the cat sat on the mat today"
+    results = compare_documents(_docs(a, b))
+    assert results.block_size == 4
+    assert [block.size for block in results.pairs[0].blocks] == [6]  # "the cat sat on the mat"
+    two = compare_documents(_docs(a, b), block_size=2)
+    assert [block.size for block in two.pairs[0].blocks] == [6, 2]  # "and then" also matches with 2
+
+
 def test_compare_documents_pairs_in_combinations_order() -> None:
     documents = load_directory(PLAGIARISM_DIR)
     results = compare_documents(documents, block_size=3, engine="difflib")

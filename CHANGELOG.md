@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Breaking changes
+- The default block size is now 4 words instead of 2, for the command (`-s`, `--block-size`) and for
+  `compare_documents(block_size=...)`. Two and three word phrases that any two texts share by chance ("of the", "it
+  is not") no longer count: on real English prose they gave unrelated documents a median coverage around 15%, so
+  about half of the unrelated pairs showed in red, and they made up about 90% of the matching blocks. Scores are
+  lower than before; copied passages are still found (98% of the copied words of planted passages, against 98.5%).
+  Comparing is about 10 times faster on large corpora, and the HTML report, JSON export and memory use are 50 to 130
+  times smaller. Use `-s 2` (or `block_size=2`) for the previous behaviour.
+
 ### Features
 - New input formats: Markdown (`.md`), HTML (`.html`, `.htm`, visible text only), Rich Text (`.rtf`) and Jupyter
   notebooks (`.ipynb`, Markdown and code cells). They are read with the standard library only and work with
