@@ -50,6 +50,9 @@
 - `Results.write_json()` and `Results.write_csv()` write the exports to a file pair by pair. The command uses them
   for `--json` and `--csv`: the files are unchanged, and writing a large JSON export no longer needs several times
   its size in memory (756 MB down to 2 MB for a 377 MB export).
+- The single-page report is written to disk document by document and pair by pair, so saving it no longer holds the
+  page in memory several times over (120 MB down to 0.4 MB for the 59 MB page of 200 documents). The page is
+  unchanged.
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at

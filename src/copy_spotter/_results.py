@@ -254,11 +254,15 @@ class Results:
         """
         if report not in REPORT_LAYOUTS:
             raise ValueError(f"report must be one of {', '.join(REPORT_LAYOUTS)}, got {report!r}")
-        if report == "single":
-            pages = {_report.RESULTS_FILENAME: self.to_html(score=score, thresholds=thresholds, meta=meta)}
-        else:
-            pages = self.to_html_pages(score=score, thresholds=thresholds, meta=meta)
+        score, thresholds = check_score(score), check_thresholds(thresholds)
         out_dir = Path(out_dir)
+        if report == "single":
+            # Written document by document and pair by pair: the page is never held in memory as a whole.
+            out_dir.mkdir(parents=True, exist_ok=True)
+            with (out_dir / _report.RESULTS_FILENAME).open("w", encoding="utf-8") as out:
+                _single_page.write_single(self, out, self._meta(meta, score), score=score, thresholds=thresholds)
+            return out_dir / _report.RESULTS_FILENAME
+        pages = self.to_html_pages(score=score, thresholds=thresholds, meta=meta)
         out_dir.mkdir(parents=True, exist_ok=True)
         for filename, html in pages.items():
             (out_dir / filename).write_text(html, encoding="utf-8")

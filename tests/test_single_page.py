@@ -4,13 +4,16 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
+from copy_spotter import compare_documents, load_directory
 from copy_spotter._compare import Pair
 from copy_spotter._documents import Document
-from copy_spotter._report import RESULTS_FILENAME
-from copy_spotter._single_page import render_single, report_data, script_json
-from copy_spotter.similarity import compare, coverage
+from copy_spotter._report import RESULTS_FILENAME, _render, _template
+from copy_spotter._single_page import iter_single, render_single, report_data, script_json
+from copy_spotter.similarity import Match, compare, coverage
 
-from .conftest import make_document, make_pair, make_results
+from .conftest import PLAGIARISM_DIR, make_document, make_pair, make_results
 
 _DATA_RE = re.compile(r'<script type="application/json" id="report-data">(.*?)</script>', re.DOTALL)
 
@@ -108,3 +111,85 @@ def test_thresholds_are_embedded() -> None:
     pairs = [make_pair(0, 1, 0.0, [], 0.0, 0.0)]
     html = render_single(make_results(["a", "b"], pairs, [_doc("x"), _doc("y")]), thresholds=(1, 2, 3))
     assert _embedded(html)["thresholds"] == [1, 2, 3]
+
+
+def _reference_page(results, meta, **options):  # type: ignore[no-untyped-def]
+    """The page as it was rendered before streaming: one script_json of the whole data, put in the template."""
+    data = report_data(results, meta, **options)
+    uses_addon = any("excluded" in document or "reference" in document for document in data["documents"])
+    addon = _template("single_addon.html") if uses_addon else ""
+    return _render(_template("single.html"), data=script_json(data), addon=addon)
+
+
+def _with_features():  # type: ignore[no-untyped-def]
+    """Results with excluded passages (quotes, template) and a reference source: the page embeds the add-on."""
+    head = "Name: Student number: Course: Introduction to the history of art. "
+    source = "Every story says the cat sat on the mat and then it slept all day long near the warm fire."
+    submissions = [
+        Document.from_text(head + 'He wrote "the cat sat on the mat and then it slept all day long" today.', "s1.txt"),
+        Document.from_text(head + source, "s2.txt"),
+    ]
+    return compare_documents(
+        submissions,
+        block_size=3,
+        ignore_quotes=True,
+        templates=[Document.from_text(head, "template.txt")],
+        references=[Document.from_text(source, "source.txt")],
+    )
+
+
+HOSTILE_DOCUMENTS = [
+    make_document('Ünïcode "quotes" & <b>tags</b>\nnew line\ttab </script>', "a</script>.txt"),
+    make_document("plain text with the same words: tags new line", "b & c.txt"),
+    make_document("", "empty.txt"),
+]
+
+
+@pytest.mark.parametrize(
+    "results",
+    [
+        make_results(
+            [d.name for d in HOSTILE_DOCUMENTS],
+            [
+                make_pair(0, 1, 40.0, [Match(4, 6, 2), Match(1, 0, 1)], 12.5, 22.2),
+                make_pair(0, 2, 0.0, [], 0.0, 0.0),
+                make_pair(1, 2, 0.0, [], 0.0, 0.0),
+            ],
+            HOSTILE_DOCUMENTS,
+        ),
+        make_results(["a.txt", "b.txt"], [], [make_document("a"), make_document("b")]),
+        make_results([], []),
+        compare_documents(load_directory(PLAGIARISM_DIR)),
+        _with_features(),
+    ],
+    ids=["hostile-text", "no-pairs", "no-documents", "plagiarism-dir", "exclusions-references"],
+)
+@pytest.mark.parametrize("score", ["coverage", "ratio"])
+def test_streamed_page_is_byte_identical_to_one_render(results, score) -> None:  # type: ignore[no-untyped-def]
+    meta = "meta </script> & <!-- é"
+    reference = _reference_page(results, meta, score=score, thresholds=(1, 2, 3))
+    chunks = list(iter_single(results, meta, score=score, thresholds=(1, 2, 3)))
+    assert "".join(chunks) == reference
+    assert render_single(results, meta, score=score, thresholds=(1, 2, 3)) == reference
+    # Template pieces around the two placeholders, the add-on, the data head, documents, "],pairs:[", pairs, "]}".
+    assert len(chunks) == len(results.documents) + len(results.pairs) + 7
+
+
+def test_streamed_page_embeds_the_addon_only_when_needed() -> None:
+    addon = _template("single_addon.html")
+    assert addon in render_single(_with_features())
+    assert addon not in render_single(compare_documents(load_directory(PLAGIARISM_DIR)))
+
+
+def test_save_streams_the_same_page_as_to_html(tmp_path: Path) -> None:
+    results = compare_documents(load_directory(PLAGIARISM_DIR))
+    path = results.save(tmp_path / "out", score="ratio", thresholds=(1, 2, 3), meta="run")
+    assert path == tmp_path / "out" / RESULTS_FILENAME
+    assert path.read_text(encoding="utf-8") == results.to_html(score="ratio", thresholds=(1, 2, 3), meta="run")
+
+
+def test_save_checks_its_options_before_writing(tmp_path: Path) -> None:
+    results = make_results(["a", "b"], [make_pair(0, 1, 0.0, [], 0.0, 0.0)])
+    with pytest.raises(ValueError, match="thresholds"):
+        results.save(tmp_path / "out", thresholds=(3, 2, 1))
+    assert not (tmp_path / "out").exists()
