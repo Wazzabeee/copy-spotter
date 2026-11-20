@@ -294,12 +294,12 @@ def run(args: argparse.Namespace) -> Path:
     if args.json_path is not None:
         json_path: Path = args.json_path.resolve()
         json_path.parent.mkdir(parents=True, exist_ok=True)
-        json_path.write_text(results.to_json(score=args.score, thresholds=args.thresholds), encoding="utf-8")
+        results.write_json(json_path, score=args.score, thresholds=args.thresholds)
         print(f"JSON saved at: {json_path}")
     if args.csv_path is not None:
         csv_path: Path = args.csv_path.resolve()
         csv_path.parent.mkdir(parents=True, exist_ok=True)
-        csv_path.write_text(results.to_csv(score=args.score), encoding="utf-8", newline="")
+        results.write_csv(csv_path, score=args.score)
         print(f"CSV saved at: {csv_path}")
     return results.save(out_dir, report=args.report, score=args.score, thresholds=args.thresholds, meta=meta)
 

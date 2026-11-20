@@ -215,6 +215,8 @@ report = results.save("results/api", report="pages")
   reference sources.
 - `Results.ranked(score)`, `pair(a, b)`, `to_dict`, `to_json`, `to_csv`, `to_html`, `to_html_pages` and `save` take
   the score mode and thresholds when rendering, so one comparison can be shown several ways.
+- `Results.write_json(path)` and `write_csv(path)` write the exports to a file pair by pair, without holding the
+  whole text in memory; the files are the same as `to_json()` and `to_csv()`.
 - `load_directory(directory, recursive=False, on_skip=None, progress=None)` reports skipped files to `on_skip`;
   `progress` receives `Progress(stage, done, total)` events. Errors derive from `CopySpotterError`:
   `UnsupportedFormatError` and `DocumentReadError` (from `Document.from_bytes` and `from_path`).

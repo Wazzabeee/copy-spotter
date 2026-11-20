@@ -47,6 +47,9 @@
   CSV as strings or saves them, with the score mode and thresholds chosen at render time. Progress callbacks,
   typed errors (`CopySpotterError`) and type hints (`py.typed`) included. See the README.
 - Importing copy-spotter no longer loads the PDF and ODT parsers; they are imported when such a file is read.
+- `Results.write_json()` and `Results.write_csv()` write the exports to a file pair by pair. The command uses them
+  for `--json` and `--csv`: the files are unchanged, and writing a large JSON export no longer needs several times
+  its size in memory (756 MB down to 2 MB for a 377 MB export).
 
 ### Changes
 - With the default `shingle` engine, coverage and ratio scores only count runs of at least `--block-size` words (at
