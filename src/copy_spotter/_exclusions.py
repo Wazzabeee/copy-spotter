@@ -36,15 +36,19 @@ _QUOTE_PAIRS = {
     "「": "」",  # CJK corner brackets
     "『": "』",
 }
+# Where a paragraph ends: a blank line, or (docx, odt and rtf text, where paragraphs are separated by a single
+# line break) a line break after the end of a sentence. A line break inside a sentence is a hard wrap.
 _PARAGRAPH_BREAK_RE = re.compile(r"\n[^\S\n]*\n")
+_SENTENCE_END_RE = re.compile(r"[.!?:;\u2026][^\S\n]*$")
 
 
 def quote_ranges(text: str) -> list[tuple[int, int]]:
     """Return the ``(start, end)`` character ranges of the quotations in ``text``, marks included.
 
     Only outermost quotations count (a quote inside a quote is part of it). A quotation must close in the
-    paragraph where it opens (paragraphs are separated by a blank line): an unmatched mark is ignored, so one
-    stray mark cannot exclude the rest of the document.
+    paragraph where it opens: an unmatched mark is ignored, so one stray mark cannot exclude the rest of the
+    document. A paragraph ends at a blank line, or at a line break that follows the end of a sentence (word
+    processors separate paragraphs with a single line break); other line breaks are hard wraps.
     """
     ranges: list[tuple[int, int]] = []
     open_at = -1
@@ -54,7 +58,9 @@ def quote_ranges(text: str) -> list[tuple[int, int]]:
             if char in closers:
                 ranges.append((open_at, index + 1))
                 open_at = -1
-            elif char == "\n" and _PARAGRAPH_BREAK_RE.match(text, index):
+            elif char == "\n" and (
+                _PARAGRAPH_BREAK_RE.match(text, index) or _SENTENCE_END_RE.search(text, open_at + 1, index)
+            ):
                 open_at = -1  # unclosed at the end of the paragraph: not a quotation
         elif char in _QUOTE_PAIRS:
             open_at, closers = index, _QUOTE_PAIRS[char]
@@ -73,8 +79,8 @@ _BIBLIOGRAPHY_HEADINGS = (
 # (PDF text, where the next line may have been joined to it) is directly followed by a first entry that looks
 # like a reference: "[1]", "1. " or "Surname, ".
 _BIBLIOGRAPHY_RE = re.compile(
-    rf"^[^\S\n]*(?:(?:\d+(?:\.\d+)*|[IVXLC]+)\.?[^\S\n]+)?(?:{_BIBLIOGRAPHY_HEADINGS})[^\S\n]*:?"
-    r"(?:[^\S\n]*$|(?=[^\S\n]+(?:\[\d|\d+\.\s|[A-Z][\w'-]+,\s)))",
+    rf"^[^\S\n]*(?:(?:\d+(?:\.\d+)*|(?-i:[IVXLC]+))\.?[^\S\n]+)?(?:{_BIBLIOGRAPHY_HEADINGS})[^\S\n]*:?"
+    r"(?:[^\S\n]*$|(?=[^\S\n]+(?:\[\d|\d+\.\s|(?-i:[A-Z])[\w'-]+,\s)))",
     re.IGNORECASE | re.MULTILINE,
 )
 _BIBLIOGRAPHY_MIN_POSITION = 0.3  # a heading in the first 30% of the text is a title or a table of contents
