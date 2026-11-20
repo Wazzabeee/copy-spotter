@@ -10,6 +10,8 @@ let engineFailed = false;
 let running = false;
 let result = null;
 let runId = 0;
+// Replaced by the limits of copy_spotter_web.py when the worker is ready; these copies only cover the loading time.
+let limits = { min_block_size: 4, warn_documents: 200, max_documents: 1000 };
 
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 
@@ -72,9 +74,21 @@ function refresh() {
   $("ignored").textContent = ignored.length
     ? `Ignored ${ignored.length} file${ignored.length === 1 ? "" : "s"} in other formats: ${ignored.slice(0, 5).join(", ")}${ignored.length > 5 ? ", ..." : ""}`
     : "";
-  $("run").disabled = running || entries.length < 2;
+  const tooMany = entries.length > limits.max_documents;
+  $("run").disabled = running || entries.length < 2 || tooMany;
   if (!running) {
-    setStatus(entries.length < 2 ? "Add at least two documents." : `Ready to compare ${entries.length} documents.`);
+    if (tooMany) {
+      setStatus(
+        `Too many documents for the browser: ${entries.length}, the limit is ${limits.max_documents}. ` +
+          "Use the command line (pip install copy-spotter) for larger sets.",
+        true,
+      );
+    } else if (entries.length > limits.warn_documents) {
+      const pairs = (entries.length * (entries.length - 1)) / 2;
+      setStatus(`Ready to compare ${entries.length} documents (${pairs.toLocaleString()} pairs): this can take a while.`);
+    } else {
+      setStatus(entries.length < 2 ? "Add at least two documents." : `Ready to compare ${entries.length} documents.`);
+    }
   }
 }
 
@@ -146,7 +160,9 @@ window.addEventListener("drop", (event) => event.preventDefault());
 function readOptions() {
   const blockSize = Number($("block-size").value);
   const thresholds = ["t-low", "t-medium", "t-high"].map((id) => Number($(id).value));
-  if (!Number.isInteger(blockSize) || blockSize < 1) throw new Error("Minimum match length must be a whole number of at least 1.");
+  if (!Number.isInteger(blockSize) || blockSize < limits.min_block_size) {
+    throw new Error(`Minimum match length must be a whole number of at least ${limits.min_block_size}.`);
+  }
   const valid = thresholds.every((t, k) => $(["t-low", "t-medium", "t-high"][k]).value !== "" && t >= 0 && t <= 100);
   if (!valid || !(thresholds[0] < thresholds[1] && thresholds[1] < thresholds[2])) {
     throw new Error("Color thresholds must be increasing percentages between 0 and 100.");
@@ -169,6 +185,7 @@ $("run").addEventListener("click", async () => {
   }
   running = true;
   runId += 1;
+  $("notice").hidden = true;
   $("run").disabled = true;
   $("progress").hidden = false;
   $("progress").removeAttribute("value");
@@ -229,11 +246,18 @@ worker.addEventListener("message", ({ data: message }) => {
       break;
     case "ready":
       engineReady = true;
+      if (message.limits) limits = message.limits;
+      refresh();
       $("engine-status").textContent = `Comparison program ready (copy-spotter ${message.version}).`;
       $("version").textContent = `Version ${message.version}.`;
       break;
     case "fatal":
       loadFailed(message.text);
+      break;
+    case "notice":
+      if (message.id !== runId) break;
+      $("notice").textContent = message.text;
+      $("notice").hidden = false;
       break;
     case "progress":
       if (message.id !== runId) break;
