@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 import webbrowser
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import NoReturn
@@ -13,7 +13,7 @@ from typing import NoReturn
 from tqdm import tqdm
 
 from copy_spotter._compare import compare_documents
-from copy_spotter._documents import Skipped, load_directory
+from copy_spotter._documents import Document, Skipped, load_directory
 from copy_spotter._errors import CopySpotterError
 from copy_spotter._normalize import NORMALIZATIONS, STOPWORD_LANGUAGES, stopword_list
 from copy_spotter._options import DEFAULT_THRESHOLDS, REPORT_LAYOUTS, SCORE_MODES, check_block_size, check_thresholds
@@ -81,6 +81,33 @@ def parse_stopwords(text: str) -> frozenset[str]:
         ) from None
 
 
+def parse_percentage(text: str) -> float:
+    """Parse ``--ignore-common``: a percentage above 0 and at most 100."""
+    try:
+        value = float(text.rstrip("%"))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected a percentage such as 50, got {text!r}") from None
+    if not 0 < value <= 100:
+        raise argparse.ArgumentTypeError(f"expected a percentage above 0 and at most 100, got {text!r}")
+    return value
+
+
+def load_paths(paths: Sequence[Path], on_skip: Callable[[Skipped], None]) -> list[Document]:
+    """Read the documents given as files or directories (the supported files directly inside each directory)."""
+    documents: list[Document] = []
+    for path in paths:
+        if path.is_dir():
+            documents += load_directory(path, on_skip=on_skip)
+        elif path.is_file():
+            try:
+                documents.append(Document.from_path(path))
+            except (OSError, CopySpotterError) as exc:
+                raise CopySpotterError(f"Could not read {path}: {exc.__cause__ or exc}") from exc
+        else:
+            raise CopySpotterError(f"Not found: {path}")
+    return documents
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="copy-spotter",
@@ -145,6 +172,21 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "Bibliography or Works cited",
     )
     parser.add_argument(
+        "--exclude",
+        action="append",
+        type=Path,
+        default=[],
+        metavar="FILE_OR_DIR",
+        help="text everyone was given, such as the assignment prompt or a template: passages of four words or more "
+        "found in it are left out of the matching (repeatable; a directory means every document in it)",
+    )
+    parser.add_argument(
+        "--ignore-common",
+        type=parse_percentage,
+        metavar="PCT",
+        help="leave out of the matching the passages found in more than PCT%% of the documents (and in at least 3)",
+    )
+    parser.add_argument(
         "--report",
         choices=REPORT_LAYOUTS,
         default="single",
@@ -181,8 +223,13 @@ def run(args: argparse.Namespace) -> Path:
     out_dir: Path = (args.out_dir or Path("results") / datetime.now().strftime("%Y%m%d_%H%M%S")).resolve()
 
     progress = TqdmProgress()
+    templates = load_paths(args.exclude, _warn_skipped)
     documents = load_directory(
-        in_dir, recursive=args.recursive, exclude=out_dir, on_skip=_warn_skipped, progress=progress
+        in_dir,
+        recursive=args.recursive,
+        exclude=[out_dir, *args.exclude],
+        on_skip=_warn_skipped,
+        progress=progress,
     )
     if len(documents) < 2:
         raise CopySpotterError(
@@ -197,6 +244,8 @@ def run(args: argparse.Namespace) -> Path:
         stopwords=args.stopwords or (),
         ignore_quotes=args.ignore_quotes,
         ignore_bibliography=args.ignore_bibliography,
+        templates=templates,
+        ignore_common=args.ignore_common,
         progress=progress,
     )
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -89,26 +89,38 @@ class Document:
         return cls.from_bytes(path.read_bytes(), path.name if name is None else name, format=fmt)
 
 
-def find_documents(directory: str | Path, *, recursive: bool = False, exclude: str | Path | None = None) -> list[Path]:
+ExcludePaths = str | Path | Iterable[str | Path] | None
+
+
+def _resolved(exclude: ExcludePaths) -> list[Path]:
+    if exclude is None:
+        return []
+    if isinstance(exclude, (str, Path)):
+        return [Path(exclude).resolve()]
+    return [Path(path).resolve() for path in exclude]
+
+
+def find_documents(directory: str | Path, *, recursive: bool = False, exclude: ExcludePaths = None) -> list[Path]:
     """Return the files of a directory that copy-spotter can read.
 
     Args:
         directory: The directory to look into.
         recursive: Also look into subdirectories.
-        exclude: Leave out the files under this path (for instance an output directory inside ``directory``).
+        exclude: Leave out the files under this path, or these paths (for instance an output directory inside
+            ``directory``).
 
     Returns:
         The non-hidden files with a supported extension (case-insensitive), sorted by path. HTML files next to a
         ``_results.html`` file are left out: they are a copy-spotter report, not documents.
     """
     directory = Path(directory)
-    excluded = None if exclude is None else Path(exclude).resolve()
+    excluded = _resolved(exclude)
     candidates = directory.rglob("*") if recursive else directory.iterdir()
     documents = []
     for path in candidates:
         if not path.is_file() or not is_supported(path) or path.name.startswith("."):
             continue
-        if excluded is not None and path.resolve().is_relative_to(excluded):
+        if any(path.resolve().is_relative_to(other) for other in excluded):
             continue
         if path.suffix.lower() in _HTML_SUFFIXES and (path.parent / RESULTS_FILENAME).is_file():
             continue
@@ -136,7 +148,7 @@ def load_directory(
     directory: str | Path,
     *,
     recursive: bool = False,
-    exclude: str | Path | None = None,
+    exclude: ExcludePaths = None,
     on_skip: Callable[[Skipped], None] | None = None,
     progress: ProgressCallback | None = None,
 ) -> list[Document]:
@@ -148,7 +160,8 @@ def load_directory(
     Args:
         directory: The directory to read.
         recursive: Also read the documents of subdirectories.
-        exclude: Leave out the files under this path (for instance an output directory inside ``directory``).
+        exclude: Leave out the files under this path, or these paths (for instance an output directory inside
+            ``directory``).
         on_skip: Called with a :class:`Skipped` for each file left out.
         progress: Called with a :class:`Progress` event (stage ``"read"``) before the first file and after each
             file.

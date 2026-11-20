@@ -8,7 +8,14 @@ from dataclasses import dataclass
 from itertools import combinations
 
 from copy_spotter._documents import Document
-from copy_spotter._exclusions import Excluded, find_exclusions, masked_words
+from copy_spotter._exclusions import (
+    Excluded,
+    common_runs,
+    find_exclusions,
+    masked_words,
+    merge,
+    template_runs,
+)
 from copy_spotter._normalize import Normalization, check_normalize, normalize_document
 from copy_spotter._options import ScoreMode, check_block_size
 from copy_spotter._progress import ProgressCallback, emit
@@ -73,6 +80,8 @@ def compare_documents(
     stopwords: Iterable[str] = (),
     ignore_quotes: bool = False,
     ignore_bibliography: bool = False,
+    templates: Sequence[Document] = (),
+    ignore_common: float | None = None,
     progress: ProgressCallback | None = None,
 ) -> Results:
     """Compare every pair of documents.
@@ -90,6 +99,12 @@ def compare_documents(
         ignore_bibliography: Leave the bibliography out of the matching: the text from the last heading such as
             "References", "Bibliography" or "Works cited" (on a line of its own, past the first 30% of the
             text) to the end.
+        templates: Documents whose text everyone was given, such as the assignment prompt or a template: passages
+            of at least four words found in a template are left out of the matching. Templates are not compared
+            with each other and are not part of the results.
+        ignore_common: A percentage: passages found in more than this share of the documents (and in at least
+            three of them) are left out of the matching, as text that everyone shares rather than copied text.
+            The documents are compared twice.
         progress: Called with a :class:`Progress` event (stage ``"compare"``) before the first pair and after
             each pair.
 
@@ -101,8 +116,8 @@ def compare_documents(
         scores, so excluding passages can only lower them.
 
     Raises:
-        ValueError: ``block_size`` is below 1, ``engine`` or a normalization is unknown, or two documents have
-            the same name.
+        ValueError: ``block_size`` is below 1, ``engine`` or a normalization is unknown, ``ignore_common`` is not
+            within 0 (excluded) and 100, or two documents have the same name.
     """
     check_block_size(block_size)
     if engine not in ENGINES:
@@ -110,29 +125,54 @@ def compare_documents(
     duplicates = sorted(name for name, count in Counter(document.name for document in documents).items() if count > 1)
     if duplicates:
         raise ValueError(f"document names must be unique, found duplicates: {', '.join(duplicates)}")
+    if ignore_common is not None and not 0 < ignore_common <= 100:
+        raise ValueError(f"ignore_common must be a percentage above 0 and at most 100, got {ignore_common}")
     normalizations = check_normalize(normalize)
     stopword_set = frozenset(word.lower() for word in stopwords)
     accents = "accents" in normalizations
     options: dict[str, object] = {}
     if normalizations or stopword_set:
         documents = [normalize_document(d, accents=accents, stopwords=stopword_set) for d in documents]
+        templates = [normalize_document(d, accents=accents, stopwords=stopword_set) for d in templates]
     if normalizations:
         options["normalize"] = list(normalizations)
     if stopword_set:
         options["stopwords"] = len(stopword_set)
 
     excluded: tuple[tuple[Excluded, ...], ...] = ()
-    if ignore_quotes or ignore_bibliography:
+    if ignore_quotes or ignore_bibliography or templates:
+        found = template_runs([d.words for d in documents], [t.words for t in templates])
         excluded = tuple(
-            find_exclusions(d.text, d.spans, quotes=ignore_quotes, bibliography=ignore_bibliography) for d in documents
+            merge(
+                [
+                    *find_exclusions(d.text, d.spans, quotes=ignore_quotes, bibliography=ignore_bibliography),
+                    *(Excluded(start, size, "template") for start, size in runs),
+                ]
+            )
+            for d, runs in zip(documents, found, strict=True)
         )
         options.update({"ignore_quotes": True} if ignore_quotes else {})
         options.update({"ignore_bibliography": True} if ignore_bibliography else {})
+        options.update({"templates": [t.name for t in templates]} if templates else {})
 
-    words = [list(document.words) for document in documents]
-    if excluded:
-        words = [masked_words(w, k, runs) for k, (w, runs) in enumerate(zip(words, excluded, strict=True))]
-    pairs = _compare_all_pairs(words, block_size, engine, progress)
+    total = len(documents) * (len(documents) - 1) // 2 * (1 if ignore_common is None else 2)
+    pairs = _compare_all_pairs(_masked(documents, excluded), block_size, engine, progress, total=total)
+    if ignore_common is not None:
+        options["ignore_common"] = ignore_common
+        # "More than ignore_common % of the documents", and never fewer than three: two documents sharing a
+        # passage is what copy-spotter looks for, not boilerplate.
+        min_documents = max(3, int(len(documents) * ignore_common / 100) + 1)
+        common = common_runs([len(d.words) for d in documents], ((p.i, p.j, p.blocks) for p in pairs), min_documents)
+        if any(common):
+            excluded = tuple(
+                merge([*runs, *(Excluded(start, size, "common") for start, size in extra)])
+                for runs, extra in zip(excluded or ((),) * len(documents), common, strict=True)
+            )
+            pairs = _compare_all_pairs(
+                _masked(documents, excluded), block_size, engine, progress, total=total, offset=len(pairs)
+            )
+        else:
+            emit(progress, "compare", total, total)
     return Results(
         documents=tuple(documents),
         pairs=tuple(pairs),
@@ -143,15 +183,29 @@ def compare_documents(
     )
 
 
+def _masked(documents: Sequence[Document], excluded: Sequence[Sequence[Excluded]]) -> list[list[str]]:
+    """Return the words to compare: each document's words, with its excluded words made unmatchable."""
+    if not excluded:
+        return [list(document.words) for document in documents]
+    return [masked_words(d.words, k, runs) for k, (d, runs) in enumerate(zip(documents, excluded, strict=True))]
+
+
 def _compare_all_pairs(
-    words: list[list[str]], block_size: int, engine: Engine, progress: ProgressCallback | None
+    words: list[list[str]],
+    block_size: int,
+    engine: Engine,
+    progress: ProgressCallback | None,
+    *,
+    total: int,
+    offset: int = 0,
 ) -> list[Pair]:
     indexes = list(combinations(range(len(words)), 2))
     pairs = []
     # One shared index for the whole corpus (shingle engine): same results as compare_pair() on each pair.
     comparisons = compare_all(words, block_size, engine)
-    emit(progress, "compare", 0, len(indexes))
+    if offset == 0:
+        emit(progress, "compare", 0, total)
     for (i, j), comparison in zip(indexes, comparisons, strict=True):
         pairs.append(_make_pair(i, j, comparison, len(words[i]), len(words[j])))
-        emit(progress, "compare", len(pairs), len(indexes))
+        emit(progress, "compare", offset + len(pairs), total)
     return pairs

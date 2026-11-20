@@ -36,9 +36,11 @@ Blocks are listed in the engine's order and may be out of order on either side.
 ``options`` lists the matching options that were turned on and is left out when there are none:
 ``"normalize": ["accents"]`` (accents folded), ``"stopwords": int`` (number of stopwords left out of the
 matching; ``word_count`` and word positions then count the remaining words only), ``"ignore_quotes": true`` and
-``"ignore_bibliography": true``. When passages were excluded from the matching, each document also has
-``"excluded_words": int`` and ``"excluded": [{"start": int, "size": int, "reason": "quote" | "bibliography"}]``:
-excluded words never match but still count in ``word_count`` and the coverages.
+``"ignore_bibliography": true``, ``"templates": [str]`` (names of the template documents) and
+``"ignore_common": float`` (the percentage). When passages were excluded from the matching, each document also has
+``"excluded_words": int`` and ``"excluded": [{"start": int, "size": int, "reason": str}]``, the reason being
+``"quote"``, ``"bibliography"``, ``"template"`` or ``"common"``: excluded words never match but still count in
+``word_count`` and the coverages.
 
 CSV columns: ``document_1, document_2, coverage_1, coverage_2, ratio, matched_words, block_count``.
 """

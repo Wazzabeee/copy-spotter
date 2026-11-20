@@ -42,7 +42,7 @@ Python 3.10 or newer is required.
 ```bash
 copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--engine {shingle,difflib}]
              [--normalize accents] [--stopwords LANGS_OR_FILE] [--ignore-quotes] [--ignore-bibliography]
-             [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
+             [--exclude FILE_OR_DIR] [--ignore-common PCT] [--report {single,pages}] [--json PATH] [--csv PATH] [--thresholds LOW,MEDIUM,HIGH] [-r]
              [--no-open] [-V] in_dir
 ```
 
@@ -57,6 +57,8 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | `--stopwords` | Leave common words out of the matching: built-in lists for `en`, `fr`, `es`, `de`, `it`, `pt` (comma separated, for instance `en,fr`), or the path of a text file of words. |
 | `--ignore-quotes` | Leave passages between quotation marks out of the matching. They are shown in grey in the report. |
 | `--ignore-bibliography` | Leave the bibliography (the end of the document after a heading such as References, Bibliography or Works cited) out of the matching. |
+| `--exclude` | Text everyone was given (assignment prompt, template, starter code): passages of four words or more found in it are left out of the matching. A file or a directory; repeatable. |
+| `--ignore-common PCT` | Leave out of the matching the passages found in more than PCT% of the documents, and in at least three. |
 | `--report` | `single` (default): one self-contained `_results.html` file. `pages`: `_results.html` plus one page per pair. |
 | `--json PATH` | Also write the pairs, scores and matching blocks as JSON. |
 | `--csv PATH` | Also write one CSV row per pair. |
@@ -97,6 +99,20 @@ Quoting a source is not copying it. Two options leave such passages out of the m
 Excluded passages stay in the report, in grey, but their words never match, so copied passages stop where a quotation
 starts. They still count in the length of the document: excluding passages can only lower a score. The JSON export
 lists them per document (`excluded_words`, and `excluded` runs with `start`, `size` and `reason`).
+
+### Templates and shared text
+
+When students start from the same prompt or template, the text they all copied from it is not plagiarism:
+
+- `--exclude prompt.docx` (repeatable, a file or a directory of documents) leaves out of the matching every passage
+  of at least four words that is also in a template. Shorter shared phrases ("one of the") are kept, so they do not cut
+  real copied passages into pieces. Templates are read like the other documents (all formats) and are not compared
+  with each other; a template inside the input folder is not compared as a submission.
+- `--ignore-common 50` finds such text automatically: passages found in more than 50% of the documents, and in at
+  least three, are left out. The documents are compared twice, so this doubles the run time.
+
+As with quotations, excluded passages are shown in grey in the report, still count in the length of each document,
+and are listed in the JSON export with the reason `template` or `common`.
 
 ### Supported formats
 
@@ -173,10 +189,11 @@ report = results.save("results/api", report="pages")
 - `Document.from_path(path)`, `Document.from_bytes(data, name, format=None)` and `Document.from_text(text, name)`
   build a document; a `Document` holds its `name`, display `text`, lowercase `words` and the `spans` of the words.
 - `compare_documents(documents, block_size=2, engine="shingle", normalize=(), stopwords=(), ignore_quotes=False,
-  ignore_bibliography=False, progress=None)` returns
+  ignore_bibliography=False, templates=(), ignore_common=None, progress=None)` returns
   `Results`: the documents and one `Pair` per pair (`i`, `j`, `coverage_i`, `coverage_j`, `ratio`, matching
   `blocks`). `normalize=["accents"]` and `stopwords=stopword_list("en", "fr")` are the `--normalize` and
-  `--stopwords` options; `ignore_quotes=True` and `ignore_bibliography=True` the exclusion options. `Results.options`
+  `--stopwords` options; `ignore_quotes=True`, `ignore_bibliography=True`, `templates=[Document, ...]` and
+  `ignore_common=50` the exclusion options. `Results.options`
   records the options in use and `Results.excluded` the excluded word runs of each document.
 - `Results.ranked(score)`, `pair(a, b)`, `to_dict`, `to_json`, `to_csv`, `to_html`, `to_html_pages` and `save` take
   the score mode and thresholds when rendering, so one comparison can be shown several ways.

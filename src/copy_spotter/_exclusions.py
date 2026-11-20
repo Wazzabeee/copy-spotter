@@ -1,4 +1,4 @@
-"""Passages left out of the matching: quotations and bibliographies.
+"""Passages left out of the matching: quotations, bibliographies, template text and passages common to many documents.
 
 An excluded passage stays in the document and in the report (shown in grey) but its words never match: before
 comparing, each excluded word is replaced with a token unique to its document and position. Blocks therefore
@@ -13,8 +13,15 @@ from bisect import bisect_left
 from collections.abc import Iterable, Sequence
 from typing import Literal, NamedTuple
 
-ExclusionReason = Literal["quote", "bibliography"]
-"""Why words were left out: inside quotation marks, or in the bibliography at the end of the document."""
+from copy_spotter.similarity import ShingleIndex
+
+ExclusionReason = Literal["quote", "bibliography", "template", "common"]
+"""Why words were left out: inside quotation marks, in the bibliography at the end of the document, found in a
+template (such as the assignment prompt), or shared by too many documents."""
+
+TEMPLATE_MIN_WORDS = 4
+"""Minimum length of a passage shared with a template to exclude it: shorter runs ("of the", "it is a") are
+everyday phrases, and excluding them would cut real copied passages into pieces."""
 
 
 class Excluded(NamedTuple):
@@ -139,6 +146,56 @@ def find_exclusions(
         if start is not None:
             found += [Excluded(s, n, "bibliography") for s, n in words_in(spans, [(start, len(text))])]
     return merge(found)
+
+
+def template_runs(
+    words: Sequence[Sequence[str]], templates: Sequence[Sequence[str]], min_words: int = TEMPLATE_MIN_WORDS
+) -> list[list[tuple[int, int]]]:
+    """Return, for each word list, the ``(start, size)`` runs of at least ``min_words`` words found in a template.
+
+    Runs are found with the shingle engine, in any order, against every template.
+    """
+    if not templates:
+        return [[] for _ in words]
+    index = ShingleIndex([*templates, *words], min_words)
+    found = []
+    for k in range(len(words)):
+        runs = []
+        for t in range(len(templates)):
+            runs += [(m.a, m.size) for m in index.compare(len(templates) + k, t).blocks if m.size >= min_words]
+        found.append(runs)
+    return found
+
+
+def common_runs(
+    lengths: Sequence[int], matches: Iterable[tuple[int, int, Iterable[tuple[int, int, int]]]], min_documents: int
+) -> list[list[tuple[int, int]]]:
+    """Return, for each document, the ``(start, size)`` runs of words found in at least ``min_documents`` documents.
+
+    Args:
+        lengths: The number of words of each document.
+        matches: ``(i, j, blocks)`` for each compared pair, ``blocks`` being ``(a, b, size)`` matches between
+            documents ``i`` and ``j``. Blocks of one pair never overlap, so a word counts each other document once.
+        min_documents: How many documents, the document itself included, must contain a word.
+    """
+    counts = [[0] * n for n in lengths]
+    for i, j, blocks in matches:
+        for a, b, size in blocks:
+            for k in range(size):
+                counts[i][a + k] += 1
+                counts[j][b + k] += 1
+    runs: list[list[tuple[int, int]]] = []
+    for doc_counts in counts:
+        doc_runs: list[tuple[int, int]] = []
+        start = -1
+        for position, count in enumerate([*doc_counts, -1]):  # the sentinel closes a run at the end
+            if count >= 0 and count + 1 >= min_documents:
+                start = position if start < 0 else start
+            elif start >= 0:
+                doc_runs.append((start, position - start))
+                start = -1
+        runs.append(doc_runs)
+    return runs
 
 
 def masked_words(words: Sequence[str], document: int, excluded: Iterable[Excluded]) -> list[str]:
