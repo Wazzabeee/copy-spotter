@@ -137,8 +137,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--block_size",
         dest="block_size",
         type=int,
-        default=2,
-        help="minimum number of consecutive identical words to highlight (default: 2)",
+        default=4,
+        help="minimum number of consecutive identical words to highlight (default: 4)",
     )
     parser.add_argument(
         "--score",

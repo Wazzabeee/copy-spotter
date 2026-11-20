@@ -57,7 +57,14 @@ def test_selected_pairs_match_compare_pair(engine: str) -> None:
     results = _results(engine=engine)
     for pair in results.pairs:
         words_i, words_j = list(results.documents[pair.i].words), list(results.documents[pair.j].words)
-        assert pair == compare_pair(pair.i, pair.j, words_i, words_j, block_size=2, engine=engine)  # type: ignore[arg-type]
+        assert pair == compare_pair(
+            pair.i,
+            pair.j,
+            words_i,
+            words_j,
+            block_size=results.block_size,
+            engine=engine,  # type: ignore[arg-type]
+        )
 
 
 def test_reference_only() -> None:

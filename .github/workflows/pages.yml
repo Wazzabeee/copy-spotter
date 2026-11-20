@@ -36,7 +36,7 @@ jobs:
       - name: Run the built site in Pyodide and compare with the CLI
         run: |
           node web/smoke.mjs web/_site data/pdf/plagiarism > "$RUNNER_TEMP/web.csv"
-          uv run copy-spotter data/pdf/plagiarism -s 4 --csv "$RUNNER_TEMP/cli.csv" -o "$RUNNER_TEMP/report" --no-open
+          uv run copy-spotter data/pdf/plagiarism --csv "$RUNNER_TEMP/cli.csv" -o "$RUNNER_TEMP/report" --no-open
           diff "$RUNNER_TEMP/cli.csv" "$RUNNER_TEMP/web.csv"
       - uses: actions/upload-pages-artifact@v4
         with:

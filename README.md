@@ -51,7 +51,7 @@ copy-spotter [-h] [-o OUT_DIR] [-s BLOCK_SIZE] [--score {coverage,ratio}] [--eng
 | --- | --- |
 | `in_dir` | Directory containing the documents to compare (pdf, docx, odt, txt, md, html, rtf, ipynb). |
 | `-o`, `--out-dir` | Directory for the HTML results. Created if missing. Default: `./results/<timestamp>`. |
-| `-s`, `--block-size` | Minimum number of consecutive identical words to highlight. Default: 2. |
+| `-s`, `--block-size` | Minimum number of consecutive identical words to highlight. Default: 4 (see [Block size](#block-size)). |
 | `--score` | `coverage` (default): percentage of each document found in the other, so a short text fully copied into a long one scores 100% in that direction. `ratio`: the symmetric similarity ratio of the pair. |
 | `--engine` | Matching algorithm: `shingle` (default) finds copied passages in any order, `difflib` is the legacy in-order matcher. |
 | `--normalize accents` | Ignore accents and ligatures when matching, so `élève` matches `eleve`. |
@@ -206,7 +206,7 @@ report = results.save("results/api", report="pages")
 
 - `Document.from_path(path)`, `Document.from_bytes(data, name, format=None)` and `Document.from_text(text, name)`
   build a document; a `Document` holds its `name`, display `text`, lowercase `words` and the `spans` of the words.
-- `compare_documents(documents, block_size=2, engine="shingle", normalize=(), stopwords=(), ignore_quotes=False,
+- `compare_documents(documents, block_size=4, engine="shingle", normalize=(), stopwords=(), ignore_quotes=False,
   ignore_bibliography=False, templates=(), ignore_common=None, references=(), compare_submissions=True,
   progress=None)` returns `Results`: the documents and one `Pair` per compared pair (`i`, `j`, `coverage_i`,
   `coverage_j`, `ratio`, matching `blocks`). `normalize=["accents"]` and `stopwords=stopword_list("en", "fr")` are
@@ -236,6 +236,16 @@ report = results.save("results/api", report="pages")
    With the shingle engine only runs of at least `--block-size` words count, so a larger block size gives a lower
    ratio.
 4. The matching runs are highlighted in the side by side view.
+
+### Block size
+
+The default block size is 4 words (it was 2 in earlier versions). Any two texts in the same language share many 2 and
+3 word phrases by chance ("of the", "it is not"): on real English prose, a block size of 2 gives two unrelated
+documents of 1000 to 2000 words about 100 matching blocks and a median coverage around 15%, so about half of the
+unrelated pairs showed in red. With a block size of 4, unrelated pairs score below 1% (median) and copied passages
+are still found (98% of the copied words of planted passages of 10 to 160 words, against 98.5% with 2). Comparing is
+also about 10 times faster and the reports and exports much smaller. Scores are therefore lower than with previous
+versions. To get the previous behaviour back, use `-s 2` (`block_size=2` in Python).
 
 `--engine difflib` keeps the previous matching, based on Python's `difflib.SequenceMatcher`: it follows a single
 in-order alignment (a passage moved elsewhere is missed), ignores words that are very frequent in texts over 200 words,

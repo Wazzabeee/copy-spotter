@@ -107,7 +107,7 @@ def test_ignore_quotes_drops_quoted_matches_but_keeps_scores_honest() -> None:
 def test_blocks_stop_at_excluded_words() -> None:
     a = Document.from_text('one two three "four five" six seven eight', "a.txt")
     b = Document.from_text("one two three four five six seven eight", "b.txt")
-    pair = compare_documents([a, b], ignore_quotes=True).pairs[0]
+    pair = compare_documents([a, b], block_size=2, ignore_quotes=True).pairs[0]  # runs of 3 words around the quote
     assert sorted((m.a, m.size) for m in pair.blocks) == [(0, 3), (5, 3)]
     assert pair.coverage_i == pair.coverage_j == 75.0
 
